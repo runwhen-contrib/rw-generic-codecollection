@@ -1,7 +1,6 @@
 # Summary
 
 ## Codebundles
-* [curl-http-ok](codebundles/curl-http-ok/README.md)
 
 ## Keywords
 * [json_parser](libraries/.docs/json_parser.md)
