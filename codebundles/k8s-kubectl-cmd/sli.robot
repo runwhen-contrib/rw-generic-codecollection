@@ -14,7 +14,7 @@ Suite Setup         Suite Initialization
 *** Tasks ***
 ${TASK_TITLE}
     [Documentation]    Runs a user provided kubectl command and pushes the metric as an SLI
-    [Tags]    kubectl    cli    metric    sli
+    [Tags]    kubectl    cli    metric    sli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${KUBECTL_COMMAND}
     ...    env={"KUBECONFIG":"./${kubeconfig.key}"}

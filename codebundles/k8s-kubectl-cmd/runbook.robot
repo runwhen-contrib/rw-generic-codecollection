@@ -14,7 +14,7 @@ Suite Setup         Suite Initialization
 *** Tasks ***
 ${TASK_TITLE}
     [Documentation]    Runs a user provided kubectl command and adds the output to the report.
-    [Tags]    kubectl    cli
+    [Tags]    kubectl    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${KUBECTL_COMMAND}
     ...    env={"KUBECONFIG":"./${kubeconfig.key}"}
