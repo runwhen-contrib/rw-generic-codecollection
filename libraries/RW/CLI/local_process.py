@@ -26,6 +26,10 @@ def execute_local_command(
     files: dict = {},
     timeout_seconds: int = 60,
 ):
+    # handles edge case where CLI tool syntax matches robotframework env vars and has to be escaped
+    rf_env_escape_pattern = re.compile(r'\\%(?=\{)')
+    cmd = rf_env_escape_pattern.sub('%', cmd)
+ 
     USER_ENV: str = os.getenv("USER", None)
     # logging.info(f"Local process user detected as: {USER_ENV}")
     # if not USER_ENV:
