@@ -25,6 +25,9 @@ ${TASK_TITLE}
         RW.Core.Add Issue
         ...    title=${ISSUE_TITLE}
         ...    severity=4
+        ...    expected=The command should produce no output, indicating no errors were found.
+        ...    actual=Found stdout output produced by the configured command, indicating errors were found.
+        ...    reproduce_hint=Run ${KUBECTL_COMMAND} to fetch the data that triggered this issue.
         ...    next_steps=${ISSUE_NEXT_STEPS}
         ...    details=${ISSUE_DETAILS}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
