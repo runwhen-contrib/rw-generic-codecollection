@@ -1,5 +1,5 @@
-Troubleshooting Tasks in Codecollection: **4**
-Codebundles in Codecollection: **4**
+Troubleshooting Tasks in Codecollection: **8**
+Codebundles in Codecollection: **8**
 
 ![](docs/GitHub_Banner.jpg)
 
@@ -22,8 +22,12 @@ Head on over to our centralized documentation [here](https://docs.runwhen.com/pu
 ## Codebundle Index
 | Name | Supported Integrations | Tasks | Documentation |
 |---|---|---|---|
+| [curl-cmd-sli](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/curl-cmd/sli.robot) | `curl` | `${TASK_TITLE}` | This SLI runs a user provided curl command and can push the result as a metric. Command line tools like jq are available. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/curl-cmd) |
+| [curl-cmd-taskset](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/curl-cmd/runbook.robot) | `curl` | `${TASK_TITLE}` | This taskset runs a user provided curl command and adds the output to the report. Command line tools like jq are available. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/curl-cmd) |
 | [gcloud-cmd-sli](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/gcloud-cmd/sli.robot) | `GCP` | `${TASK_TITLE}` | Runs a user provided gcloud command and pushes the metric to the RunWhen Platform. The supplied command must result in distinct single metric. Command line tools like jq are available. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/gcloud-cmd) |
 | [gcloud-cmd-taskset](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/gcloud-cmd/runbook.robot) | `GCP` | `${TASK_TITLE}` | Runs a user provided gcloud command [Docs](https://docs.runwhen.com/public/v/cli-codecollection/gcloud-cmd) |
 | [k8s-kubectl-cmd-sli](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/k8s-kubectl-cmd/sli.robot) | `k8s` | `${TASK_TITLE}` | This taskset runs a user provided kubectl command and pushes the metric. The supplied command must result in distinct single metric. Command line tools like jq are available. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/k8s-kubectl-cmd) |
 | [k8s-kubectl-cmd-taskset](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/k8s-kubectl-cmd/runbook.robot) | `k8s` | `${TASK_TITLE}` | This taskset runs a user provided kubectl command andadds the output to the report. Command line tools like jq are available. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/k8s-kubectl-cmd) |
+| [k8s-stdout-issue-sli](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/k8s-stdout-issue/sli.robot) | `k8s` | `${TASK_TITLE}` | Runs a user provided kubectl command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/k8s-stdout-issue) |
+| [k8s-stdout-issue-taskset](https://github.com/runwhen-contrib/rw-generic-codecollection/blob/main/codebundles/k8s-stdout-issue/runbook.robot) | `k8s` | `${TASK_TITLE}` | Runs a user provided command, and if stdout out is returned (indicating found errors) then an issue is raised. [Docs](https://docs.runwhen.com/public/v/cli-codecollection/k8s-stdout-issue) |
 
