@@ -24,7 +24,7 @@ ${TASK_TITLE}
     IF    """${rsp.stdout}""" != ""
         RW.Core.Add Issue
         ...    title=${ISSUE_TITLE}
-        ...    severity=4
+        ...    severity=${ISSUE_SEVERITY}
         ...    expected=The command should produce no output, indicating no errors were found.
         ...    actual=Found stdout output produced by the configured command, indicating errors were found.
         ...    reproduce_hint=Run ${KUBECTL_COMMAND} to fetch the data that triggered this issue.
@@ -78,4 +78,10 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="The command returned the following output, indicating errors: \${STDOUT}"
     ...    default="The command returned the following output, indicating errors: \${STDOUT}"
+    ${ISSUE_SEVERITY}=    RW.Core.Import User Variable    ISSUE_SEVERITY
+    ...    type=string
+    ...    description=An integer severity rating for the issue if raised, where 1 is critical, and 4 is informational.
+    ...    pattern=\w*
+    ...    example=3
+    ...    default=3
 
