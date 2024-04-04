@@ -6,5 +6,10 @@ The generalized user-provided command that can raise a configurable issue if the
 
 Example: `kubectl get events | grep -i warning`
 
+## SLI
+A generalized SLI that pushes a 1 when the output is empty, indicating no errors were found. Pushes a 0 (unhealthy) metric when output is produced.
+
+Example: `kubectl get events | grep -i warning`
+
 ## Requirements
 - A kubeconfig for authentication
