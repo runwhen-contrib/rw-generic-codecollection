@@ -13,36 +13,25 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-Sanity Check Kubeconfig
-    [Documentation]    Checks kubeconfig import
+Test Secret Providers
+    [Documentation]    Pushes the total score to the platform
     [Tags]    kubectl    cli    metric    sli    generic
-    Run Keyword If    """${kubeconfig.value}""".__len__() > 50    Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.2
+    Log To Console    Run Finished
 
-Test Environment Variables
-    [Documentation]    Checks various ways of importing secret environment variables and that they are set
-    [Tags]    kubectl    cli    metric    sli    generic
-    ${process}=    Run Process    ${CURDIR}/validate_envs.sh    env=${env_check_params}
-    Log To Console    ${process.stdout}
-    IF    ${process.rc} == 0
-        Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.4
-    END
-
-Test File Presence
-    [Documentation]    Checks that various files exist from secret imports
-    [Tags]    kubectl    cli    metric    sli    generic
+*** Keywords ***
+Suite Initialization
     ${process}=    Run Process    ${CURDIR}/check_files_exist.sh    env=${env_check_params}
     Log To Console    ${process.stdout}
     IF    ${process.rc} == 0
         Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.4
     END
+    ${process}=    Run Process    ${CURDIR}/validate_envs.sh    env=${env_check_params}
+    Log To Console    ${process.stdout}
+    IF    ${process.rc} == 0
+        Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.4
+    END
+    Run Keyword If    """${kubeconfig.value}""".__len__() > 50    Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.2
 
-Push Total Score
-    [Documentation]    Pushes the total score to the platform
-    [Tags]    kubectl    cli    metric    sli    generic
-    RW.Core.Push Metric    ${TOTAL_SCORE}
-
-*** Keywords ***
-Suite Initialization
     ${kubeconfig}=    RW.Core.Import Secret
     ...    kubeconfig
     ...    type=string
@@ -83,4 +72,4 @@ Suite Initialization
     # ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     # ...    pattern=\w*
     # ...    example="Count the number of pods in the namespace"
-    Set Suite Variable    TOTAL_SCORE    0
+    RW.Core.Push Metric    ${TOTAL_SCORE}
