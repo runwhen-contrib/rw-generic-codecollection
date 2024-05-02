@@ -79,6 +79,11 @@ Suite Initialization
     ...    type=string
     ...    description=Provider environment variable import from configmap
     ...    pattern=\w*
+    ${jvault-simple}=    RW.Core.Import Secret
+    ...    jvault-simple
+    ...    type=string
+    ...    description=Custom vault test
+    ...    pattern=\w*
     # ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     # ...    type=string
     # ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
