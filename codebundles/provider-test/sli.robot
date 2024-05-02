@@ -20,6 +20,7 @@ Test Secret Providers
 
 *** Keywords ***
 Suite Initialization
+    ${TOTAL_SCORE}=    Set Variable    0
     ${ENV_LIST}=    RW.Core.Import User Variable    ENV_LIST
     ...    type=string
     ...    description=ENV vars to check for testing
