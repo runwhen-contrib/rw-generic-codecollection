@@ -9,7 +9,7 @@ fi
 echo "Checking env list: $ENV_LIST"
 RC=0
 for var in $ENV_LIST; do
-    if [[ -z ${var+x} ]]; then
+    if [[ -z ${!var} ]]; then
         echo "Environment variable '$var' is not set"
         RC=1
     fi
