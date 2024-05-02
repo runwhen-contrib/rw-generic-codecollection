@@ -20,6 +20,22 @@ Test Secret Providers
 
 *** Keywords ***
 Suite Initialization
+    ${ENV_LIST}=    RW.Core.Import User Variable    ENV_LIST
+    ...    type=string
+    ...    description=ENV vars to check for testing
+    ...    pattern=\w*
+    ...    example=SpecialEnvCOnfigMap helloEnvSecret TEST_CASEEnvConfigMap
+    ...    default=SpecialEnvCOnfigMap helloEnvSecret TEST_CASEEnvConfigMap
+    ${FILE_LIST}=    RW.Core.Import User Variable    FILE_LIST
+    ...    type=string
+    ...    description=Files to check for testing
+    ...    pattern=\w*
+    ...    example=secrets/goodbyeFileConfigMap secrets/goodbyeFileSecret
+    ...    default=secrets/goodbyeFileConfigMap secrets/goodbyeFileSecret
+    Set Suite Variable
+    ...    &{env_check_params}
+    ...    ENV_LIST=${ENV_LIST}
+    ...    FILE_LIST=${FILE_LIST}
     ${process}=    Run Process    ${CURDIR}/check_files_exist.sh    env=${env_check_params}
     Log To Console    ${process.stdout}
     IF    ${process.rc} == 0
@@ -63,10 +79,6 @@ Suite Initialization
     ...    type=string
     ...    description=Provider environment variable import from configmap
     ...    pattern=\w*
-    Set Suite Variable
-    ...    &{env_check_params}
-    ...    ENV_LIST=SpecialEnvCOnfigMap helloEnvSecret TEST_CASEEnvConfigMap
-    ...    FILE_LIST=secrets/goodbyeFileConfigMap secrets/goodbyeFileSecret
     # ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     # ...    type=string
     # ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
