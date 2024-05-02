@@ -47,7 +47,6 @@ Suite Initialization
     IF    ${process.rc} == 0
         Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.4
     END
-    Run Keyword If    """${kubeconfig.value}""".__len__() > 50    Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.2
 
     ${kubeconfig}=    RW.Core.Import Secret
     ...    kubeconfig
