@@ -9,11 +9,12 @@ fi
 echo "Checking env list: $ENV_LIST"
 RC=0
 for var in $ENV_LIST; do
-    if [[ -z ${!var} ]]; then
-        echo "Environment variable '$var' is not set"
+    if [[ ${#var} -eq 0 ]]; then
+        echo "Environment variable '$var' has length 0"
         RC=1
     fi
 done
+
 if [[ $RC -ne 0 ]]; then
     echo "Some environment variables are not set, review logs for details"
     exit $RC

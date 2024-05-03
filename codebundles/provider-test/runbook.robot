@@ -21,6 +21,8 @@ Test Secret Providers
 
 *** Keywords ***
 Suite Initialization
+    ${process}=    Run Process    ${CURDIR}/printenv.sh
+    Log To Console    ${process.stdout}
     ${TOTAL_SCORE}=    Set Variable    0
     ${ENV_LIST}=    RW.Core.Import User Variable    ENV_LIST
     ...    type=string
@@ -41,12 +43,12 @@ Suite Initialization
     ${process}=    Run Process    ${CURDIR}/check_files_exist.sh    env=${env_check_params}
     Log To Console    ${process.stdout}
     IF    ${process.rc} == 0
-        Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.5
+        ${TOTAL_SCORE}=    Evaluate    ${TOTAL_SCORE} + 0.5
     END
     ${process}=    Run Process    ${CURDIR}/validate_envs.sh    env=${env_check_params}
     Log To Console    ${process.stdout}
     IF    ${process.rc} == 0
-        Set Variable    ${TOTAL_SCORE}=${TOTAL_SCORE}+0.5
+        ${TOTAL_SCORE}=    Evaluate    ${TOTAL_SCORE} + 0.5
     END
 
     ${kubeconfig}=    RW.Core.Import Secret
@@ -90,12 +92,13 @@ Suite Initialization
     # ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     # ...    pattern=\w*
     # ...    example="Count the number of pods in the namespace"
+    ${jvaultval}=    Set Variable    ${jvault-simple}
     Log To Console    ${kubeconfig.value}
-    Log To Console    ${jvault-simple.value}
+    Log To Console    ${jvaultval.value}
     Log To Console    ${helloEnvSecret.value}
     Log To Console    ${TEST_CASEEnvConfigMap.value}
     Log To Console    ${goodbyeFileConfigMap.value}
     Log To Console    ${goodbyeFileSecret.value}
     Log To Console    ${specialEnvConfigMap.value}
-    Set Suite Variable    ${TOTAL_SCORE}    ${TOTAL_SCORE}
-    
+    Set Suite Variable   ${TOTAL_SCORE}    ${TOTAL_SCORE}
+        
