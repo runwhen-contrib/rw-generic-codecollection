@@ -15,13 +15,15 @@ Suite Setup         Suite Initialization
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Runs a user provided aws cli command and if the return string is non-empty, it's added to a report and used to raise an issue.
-    [Tags]    aws    cli    generic
+    [Documentation]    Runs a user provided azure cli command and if the return string is non-empty, it's added to a report and used to raise an issue.
+    [Tags]    azure    cli    generic
     ${rsp}=    RW.CLI.Run Cli
-    ...    cmd=${AWS_COMMAND}
-    ...    env={"AWS_REGION":"${AWS_REGION}"}
-    ...    secret__AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-    ...    secret__AWS_ACCESS_KEY_ID=${secret__AWS_ACCESS_KEY_ID}
+    ...    cmd=${AZURE_COMMAND}
+    ...    env={"AZ_RESOURCE_GROUP":"${AZ_RESOURCE_GROUP}"}
+    ...    secret__AZ_USERNAME=${AZ_USERNAME}
+    ...    secret__AZ_SECRET_VALUE=${AZ_SECRET_VALUE}
+    ...    secret__AZ_TENANT=${AZ_TENANT}
+    ...    secret__AZ_SUBSCRIPTION=${AZ_SUBSCRIPTION}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -30,13 +32,12 @@ ${TASK_TITLE}
         ...    severity=${ISSUE_SEVERITY}
         ...    expected=The command should produce no output, indicating no errors were found.
         ...    actual=Found stdout output produced by the configured command, indicating errors were found.
-        ...    reproduce_hint=Run ${AWS_COMMAND} to fetch the data that triggered this issue.
+        ...    reproduce_hint=Run ${AZURE_COMMAND} to fetch the data that triggered this issue.
         ...    next_steps=${ISSUE_NEXT_STEPS}
         ...    details=${ISSUE_DETAILS}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
-
     ELSE
         RW.Core.Add Pre To Report    No output was returned from the command, indicating no errors were found.
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
@@ -44,32 +45,37 @@ ${TASK_TITLE}
         RW.Core.Add Pre To Report    Commands Used: ${history}
     END
 
-
 *** Keywords ***
 Suite Initialization
-    ${AWS_SECRET_ACCESS_KEY}=    RW.Core.Import Secret
-    ...    AWS_SECRET_ACCESS_KEY
+    ${AZ_USERNAME}=    RW.Core.Import Secret
+    ...    AZ_USERNAME
     ...    type=string
-    ...    description=The secret access key used for authenticating the aws cli.
+    ...    description=The azure service principal client ID on the app registration.
     ...    pattern=\w*
-    ...    example=
-    ${AWS_ACCESS_KEY_ID}=    RW.Core.Import Secret
-    ...    AWS_ACCESS_KEY_ID
+    ${AZ_SECRET_VALUE}=    RW.Core.Import Secret
+    ...    AZ_SECRET_VALUE
     ...    type=string
-    ...    description=The access key for authenticating the aws cli.
+    ...    description=The service principal secret value on the associated credential for the app registration.
     ...    pattern=\w*
-    ...    example=
-    ${AWS_REGION}=    RW.Core.Import User Variable    AWS_REGION
+    ${AZ_TENANT}=    RW.Core.Import Secret
+    ...    AZ_TENANT
     ...    type=string
-    ...    description=The aws region that actions are performed in.
+    ...    description=The azure tenant ID used by the service principal to authenticate with azure.
     ...    pattern=\w*
-    ...    example=us-west-1
-    ...    default=us-west-1
-    ${AWS_COMMAND}=    RW.Core.Import User Variable    AWS_COMMAND
+    ${AZ_SUBSCRIPTION}=    RW.Core.Import Secret
+    ...    AZ_SUBSCRIPTION
     ...    type=string
-    ...    description=The aws cli command to run. Can use tools like jq.
+    ...    description=The azure tenant ID used by the service principal to authenticate with azure.
     ...    pattern=\w*
-    ...    example=aws logs filter-log-events --log-group-name /aws/lambda/hello-error --filter-pattern "ERROR" | jq -r '.events[].message'
+    ${AZ_RESOURCE_GROUP}=    RW.Core.Import User Variable    AZ_RESOURCE_GROUP
+    ...    type=string
+    ...    description=The resource group to perform actions against.
+    ...    pattern=\w*
+    ${AZURE_COMMAND}=    RW.Core.Import User Variable    AZURE_COMMAND
+    ...    type=string
+    ...    description=The az cli command to run. Can use tools like jq.
+    ...    pattern=\w*
+    ...    example=az monitor metrics list --resource myapp --resource-group myrg  --resource-type Microsoft.Web/sites --metric "HealthCheckStatus" --interval 5m | -r '.value[].timeseries[].data[].average'
     ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
@@ -99,3 +105,4 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=3
     ...    default=3
+

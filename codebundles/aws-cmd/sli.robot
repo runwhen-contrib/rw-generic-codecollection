@@ -1,6 +1,6 @@
 *** Settings ***
-Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then a health score of 0 (unhealthy) is pushed, otherwise if there is no output, indicating no issues, then a 1 is pushed.
-...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
+Documentation       This sli runs a user provided awscli command and pushes the metric. The supplied command must result in distinct single metric. Command line tools like jq are available. 
+
 
 Metadata            Author    jon-funk
 
@@ -22,13 +22,7 @@ ${TASK_TITLE}
     ...    env={"AWS_REGION":"${AWS_REGION}"}
     ...    secret__AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ...    secret__AWS_ACCESS_KEY_ID=${secret__AWS_ACCESS_KEY_ID}
-    ${history}=    RW.CLI.Pop Shell History
-    ${STDOUT}=    Set Variable    ${rsp.stdout}
-    IF    """${rsp.stdout}""" != ""
-        RW.Core.Push Metric     0
-    ELSE
-        RW.Core.Push Metric     1
-    END
+    RW.Core.Push Metric     ${rsp.stdout}
 
 
 *** Keywords ***

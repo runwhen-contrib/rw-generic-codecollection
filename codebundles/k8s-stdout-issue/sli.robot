@@ -1,5 +1,7 @@
 *** Settings ***
-Documentation       Runs a user provided kubectl command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then a health score of 0 (unhealthy) is pushed, otherwise if there is no output, indicating no issues, then a 1 is pushed.
+...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
+
 Metadata            Author    jon-funk
 
 Library             BuiltIn

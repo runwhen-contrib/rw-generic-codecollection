@@ -1,6 +1,7 @@
 *** Settings ***
-Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then an issue is generated with a configurable title and content.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then a health score of 0 (unhealthy) is pushed, otherwise if there is no output, indicating no issues, then a 1 is pushed.
 ...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
+
 Metadata            Author    jon-funk
 
 Library             BuiltIn
@@ -14,48 +15,29 @@ Suite Setup         Suite Initialization
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Runs a user provided kubectl command and if the return string is non-empty, it's added to a report and used to raise an issue.
-    [Tags]    kubectl    cli    generic
+    [Documentation]    Runs a user provided gcloud command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
+    [Tags]    gcloud    cli    generic
     ${rsp}=    RW.CLI.Run Cli
-    ...    cmd=${KUBECTL_COMMAND}
-    ...    env={"KUBECONFIG":"./${kubeconfig.key}"}
-    ...    secret_file__kubeconfig=${kubeconfig}
+    ...    cmd=gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && ${GCLOUD_COMMAND}
+    ...    env=${env}
+    ...    secret_file__gcp_credentials_json=${gcp_credentials_json}
+    ...    timeout_seconds=180
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
-        RW.Core.Add Issue
-        ...    title=${ISSUE_TITLE}
-        ...    severity=${ISSUE_SEVERITY}
-        ...    expected=The command should produce no output, indicating no errors were found.
-        ...    actual=Found stdout output produced by the configured command, indicating errors were found.
-        ...    reproduce_hint=Run ${KUBECTL_COMMAND} to fetch the data that triggered this issue.
-        ...    next_steps=${ISSUE_NEXT_STEPS}
-        ...    details=${ISSUE_DETAILS}
-        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
-
+        RW.Core.Push Metric     0
     ELSE
-        RW.Core.Add Pre To Report    No output was returned from the command, indicating no errors were found.
-        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
+        RW.Core.Push Metric     1
     END
 
 
 *** Keywords ***
 Suite Initialization
-    ${kubeconfig}=    RW.Core.Import Secret
-    ...    kubeconfig
+    ${gcp_credentials_json}=    RW.Core.Import Secret    gcp_credentials_json
     ...    type=string
-    ...    description=The kubernetes kubeconfig yaml containing connection configuration used to connect to cluster(s).
+    ...    description=GCP service account json used to authenticate with GCP APIs.
     ...    pattern=\w*
-    ...    example=For examples, start here https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
-    ${KUBECTL_COMMAND}=    RW.Core.Import User Variable    KUBECTL_COMMAND
-    ...    type=string
-    ...    description=The kubectl command to run. Can use tools like jq.
-    ...    pattern=\w*
-    ...    example="kubectl get events -n online-boutique | grep -i warning"
+    ...    example={"type": "service_account","project_id":"myproject-ID", ... super secret stuff ...}
     ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
@@ -85,4 +67,13 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=3
     ...    default=3
-
+    ${GCLOUD_COMMAND}=    RW.Core.Import User Variable    GCLOUD_COMMAND
+    ...    type=string
+    ...    description=The gcloud command to run. Make sure to pass along details such as the GCP Project ID. 
+    ...    pattern=\w*
+    ...    example="gcloud projects list"
+    ${OS_PATH}=    Get Environment Variable    PATH
+    Set Suite Variable    ${gcp_credentials_json}    ${gcp_credentials_json}
+    Set Suite Variable
+    ...    ${env}
+    ...    {"GOOGLE_APPLICATION_CREDENTIALS":"./${gcp_credentials_json.key}","PATH":"$PATH:${OS_PATH}"}
