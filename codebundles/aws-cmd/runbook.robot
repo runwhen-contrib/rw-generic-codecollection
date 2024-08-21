@@ -1,6 +1,5 @@
 *** Settings ***
-Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then a health score of 0 (unhealthy) is pushed, otherwise if there is no output, indicating no issues, then a 1 is pushed.
-...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
+Documentation       This taskset runs a user provided awscli command and adds the output to the report. Command line tools like jq are available.
 
 Metadata            Author    jon-funk
 
@@ -15,7 +14,7 @@ Suite Setup         Suite Initialization
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Runs a user provided aws cli command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
+    [Documentation]    Runs a user provided aws cli command and adds the output to the report.
     [Tags]    aws    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AWS_COMMAND}
@@ -23,12 +22,9 @@ ${TASK_TITLE}
     ...    secret__AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ...    secret__AWS_ACCESS_KEY_ID=${secret__AWS_ACCESS_KEY_ID}
     ${history}=    RW.CLI.Pop Shell History
-    ${STDOUT}=    Set Variable    ${rsp.stdout}
-    IF    """${rsp.stdout}""" != ""
-        RW.Core.Push Metric     0
-    ELSE
-        RW.Core.Push Metric     1
-    END
+    RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
+    RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
+    RW.Core.Add Pre To Report    Commands Used: ${history}
 
 
 *** Keywords ***
@@ -61,4 +57,3 @@ Suite Initialization
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*
     ...    example="Count the number of pods in the namespace"
-

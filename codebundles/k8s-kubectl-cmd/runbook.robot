@@ -1,5 +1,5 @@
 *** Settings ***
-Documentation       This taskset runs a user provided kubectl command andadds the output to the report. Command line tools like jq are available.
+Documentation       This taskset runs a user provided kubectl command and adds the output to the report. Command line tools like jq are available.
 Metadata            Author    stewartshea
 
 Library             BuiltIn

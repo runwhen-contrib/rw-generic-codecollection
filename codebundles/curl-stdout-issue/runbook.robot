@@ -1,5 +1,6 @@
 *** Settings ***
-Documentation       Runs a user provided command, and if stdout out is returned (indicating found errors) then an issue is raised.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then an issue is generated with a configurable title and content.
+...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 Metadata            Author    jon-funk
 
 Library             BuiltIn
