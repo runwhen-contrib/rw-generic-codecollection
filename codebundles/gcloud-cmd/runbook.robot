@@ -2,7 +2,7 @@
 Documentation       Runs a user provided gcloud command
 Metadata            Author    stewartshea
 Metadata            Supports    GCP
-Metadata            DisplayName    GCP CLI Command
+Metadata            Display Name    GCP CLI Command
 
 Library             BuiltIn
 Library             RW.Core

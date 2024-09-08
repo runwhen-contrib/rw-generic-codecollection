@@ -2,7 +2,7 @@
 Documentation       This taskset runs a user provided azure command and adds the output to the report. Command line tools like jq are available.
 
 Metadata            Author    jon-funk
-Metadata            DisplayName    Azure CLI Command
+Metadata            Display Name    Azure CLI Command
 Metadata            Supports    Azure
 
 Library             BuiltIn

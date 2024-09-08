@@ -3,7 +3,7 @@ Documentation       This sli runs a user provided azure cli command and pushes t
 
 
 Metadata            Author    jon-funk
-Metadata            DisplayName    Metric from Azure CLI Command
+Metadata            Display Name    Metric from Azure CLI Command
 Metadata            Supports    Azure
 
 Library             BuiltIn

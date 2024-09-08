@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation       This SLI runs a user provided curl command and can push the result as a metric. Command line tools like jq are available.
 Metadata            Author    jon-funk
-Metadata            DisplayName    Metric cURL CLI Command
+Metadata            Display Name    Metric cURL CLI Command
 Metadata            Supports    cURL
 
 Library             BuiltIn

@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation       This taskset runs a user provided curl command and adds the output to the report. Command line tools like jq are available.
 Metadata            Author    jon-funk
-Metadata            DisplayName    cURL CLI Command
+Metadata            Display Name    cURL CLI Command
 Metadata            Supports    cURL
 
 Library             BuiltIn

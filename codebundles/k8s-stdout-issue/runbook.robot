@@ -2,7 +2,7 @@
 Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then an issue is generated with a configurable title and content.
 ...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 Metadata            Author    jon-funk
-Metadata            DisplayName    Kubernetes CLI Command
+Metadata            Display Name    Kubernetes CLI Command
 Metadata            Supports    K8s    Kubernetes
 
 Library             BuiltIn

@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation       This taskset runs a user provided kubectl command and pushes the metric. The supplied command must result in distinct single metric. Command line tools like jq are available. 
 Metadata            Author    stewartshea
-Metadata            DisplayName    Metric from Kubernetes CLI Command
+Metadata            Display Name    Metric from Kubernetes CLI Command
 Metadata            Supports    K8s    Kubernetes
 
 Library             BuiltIn

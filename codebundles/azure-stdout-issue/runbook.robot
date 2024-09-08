@@ -3,7 +3,7 @@ Documentation       Runs an ad-hoc user-provided command, and if the provided co
 ...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 
 Metadata            Author    jon-funk
-Metadata            DisplayName    Azure CLI Command with Issue
+Metadata            Display Name    Azure CLI Command with Issue
 Metadata            Supports    Azure
 
 Library             BuiltIn
