@@ -1,6 +1,8 @@
 *** Settings ***
 Documentation       This taskset runs a user provided kubectl command and adds the output to the report. Command line tools like jq are available.
 Metadata            Author    stewartshea
+Metadata            DisplayName    Kubernetes CLI Command
+Metadata            Supports    K8s    Kubernetes
 
 Library             BuiltIn
 Library             RW.Core

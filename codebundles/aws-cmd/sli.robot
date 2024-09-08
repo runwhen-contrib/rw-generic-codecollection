@@ -3,6 +3,8 @@ Documentation       This sli runs a user provided awscli command and pushes the 
 
 
 Metadata            Author    jon-funk
+Metadata            DisplayName    AWS CLI Command
+Metadata            Supports    AWS
 
 Library             BuiltIn
 Library             RW.Core

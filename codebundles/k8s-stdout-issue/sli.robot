@@ -3,6 +3,8 @@ Documentation       Runs an ad-hoc user-provided command, and if the provided co
 ...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 
 Metadata            Author    jon-funk
+Metadata            DisplayName    Metric from Kubernetes CLI Command
+Metadata            Supports    K8s    Kubernetes
 
 Library             BuiltIn
 Library             RW.Core

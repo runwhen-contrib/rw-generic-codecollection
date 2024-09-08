@@ -2,6 +2,7 @@
 Documentation       Runs a user provided gcloud command and pushes the metric to the RunWhen Platform. The supplied command must result in distinct single metric. Command line tools like jq are available. 
 Metadata            Author    stewartshea
 Metadata            Supports    GCP
+Metadata            DisplayName    Metric from GCP CLI Command
 
 Library             BuiltIn
 Library             RW.Core

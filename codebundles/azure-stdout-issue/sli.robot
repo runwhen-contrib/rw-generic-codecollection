@@ -4,6 +4,8 @@ Documentation       Runs an ad-hoc user-provided command, and if the provided co
 
 
 Metadata            Author    jon-funk
+Metadata            DisplayName    Metric from Azure CLI Command
+Metadata            Supports    Azure
 
 Library             BuiltIn
 Library             RW.Core

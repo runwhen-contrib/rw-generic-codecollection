@@ -3,6 +3,8 @@ Documentation       Runs an ad-hoc user-provided command, and if the provided co
 ...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 
 Metadata            Author    jon-funk
+Metadata            DisplayName    AWS CLI Command with Issue
+Metadata            Supports    AWS
 
 Library             BuiltIn
 Library             RW.Core

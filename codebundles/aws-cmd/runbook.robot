@@ -2,7 +2,8 @@
 Documentation       This taskset runs a user provided awscli command and adds the output to the report. Command line tools like jq are available.
 
 Metadata            Author    jon-funk
-
+Metadata            DisplayName    AWS CLI Command
+Metadata            Supports    AWS
 Library             BuiltIn
 Library             RW.Core
 Library             RW.platform
