@@ -32,6 +32,11 @@ ${TASK_TITLE}
 
 *** Keywords ***
 Suite Initialization
+    ${azure_credentials}=    RW.Core.Import Secret
+    ...    azure_credentials
+    ...    type=string
+    ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET, AZURE_SUBSCRIPTION_ID
+    ...    pattern=\w*
     ${AZURE_COMMAND}=    RW.Core.Import User Variable    AZURE_COMMAND
     ...    type=string
     ...    description=The az cli command to run. Can use tools like jq.
