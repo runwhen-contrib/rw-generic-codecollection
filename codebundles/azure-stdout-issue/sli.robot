@@ -41,7 +41,7 @@ Suite Initialization
     ...    type=string
     ...    description=The az cli command to run. Can use tools like jq.
     ...    pattern=\w*
-    ...    example=az monitor metrics list --resource myapp --resource-group myrg  --resource-type Microsoft.Web/sites --metric "HealthCheckStatus" --interval 5m | -r '.value[].timeseries[].data[0].average'
+    ...    example=az monitor metrics list --resource myapp --resource-group myrg --resource-type Microsoft.Web/sites --metric "HealthCheckStatus" --interval 5m | -r '.value[].timeseries[].data[0].average'
     ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
