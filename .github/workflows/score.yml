@@ -8,6 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: runwhen-contrib/github-actions/codecollection-score@tree/score
+      - uses: runwhen-contrib/github-actions/codecollection-score@score
         with:
           directory: './codebundles'
