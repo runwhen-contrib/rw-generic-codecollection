@@ -1,0 +1,13 @@
+name: Score CodeCollection
+on: 
+  workflow_dispatch:
+
+jobs:
+  score-codebundles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: runwhen-contrib/github-actions@8eb003c6ae7719bddb49538c29c1e478c71ba6a7
+        with:
+          directory: './codebundles'
