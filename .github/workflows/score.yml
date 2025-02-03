@@ -5,9 +5,20 @@ on:
 jobs:
   score-codebundles:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # <-- This ensures we can push commits
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out the repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # so we can push back
+
+      - name: Set Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - uses: runwhen-contrib/github-actions/codecollection-score@score
         with:
           directory: './codebundles'
+          commit_results: true
