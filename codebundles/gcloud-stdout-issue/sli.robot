@@ -15,7 +15,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run GCLOUD_COMMAND in Specific GCloud Project
     [Documentation]    Runs a user provided gcloud command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
     [Tags]    gcloud    cli    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -39,7 +39,7 @@ Suite Initialization
     ...    description=GCP service account json used to authenticate with GCP APIs.
     ...    pattern=\w*
     ...    example={"type": "service_account","project_id":"myproject-ID", ... super secret stuff ...}
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run GCLOUD_COMMAND in Specific GCloud Project=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*

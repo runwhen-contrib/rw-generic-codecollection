@@ -14,7 +14,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run User Provided GCloud Command in `${GCLOUD_COMMAND}` and Add Output to Report
     [Documentation]    Runs a user provided gcloud command and adds the output to the report.
     [Tags]    stdout    gcloud    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -52,7 +52,7 @@ Suite Initialization
     ...    description=GCP service account json used to authenticate with GCP APIs.
     ...    pattern=\w*
     ...    example={"type": "service_account","project_id":"myproject-ID", ... super secret stuff ...}
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run User Provided GCloud Command in `${GCLOUD_COMMAND}` and Add Output to Report=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*

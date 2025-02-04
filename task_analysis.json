@@ -1,0 +1,184 @@
+{
+    "task_results": [
+        {
+            "codebundle": "k8s-stdout-issue",
+            "file": "runbook.robot",
+            "filepath": "codebundles/k8s-stdout-issue/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The title is clear and specific, mentioning the use of kubectl command and the action to be taken in case of non-empty return string. The documentation and tags provide further clarity on the task. The variables will be substituted at runtime, so placeholders like $${VAR_NAME} are acceptable.",
+            "suggested_title": "Run User Provided Kubectl Command in `${KUBECTL_COMMAND}`"
+        },
+        {
+            "codebundle": "k8s-stdout-issue",
+            "file": "sli.robot",
+            "filepath": "codebundles/k8s-stdout-issue/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific in describing the purpose of the task - running a user provided kubectl command and determining health score based on the return string. It also includes relevant tags for clarity. The use of the imported variable 'TASK_TITLE' ensures that the actual task title will be inserted at runtime, maintaining human readability.",
+            "suggested_title": "Run Kubectl Command and Determine Health Score for `${KUBECTL_COMMAND}`"
+        },
+        {
+            "codebundle": "azure-stdout-issue",
+            "file": "runbook.robot",
+            "filepath": "codebundles/azure-stdout-issue/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific, mentioning the use of user provided azure cli command, reporting non-empty results, and raising an issue. The tags provide further context on the nature of the task. The imported variables provide clarity on the expected inputs.",
+            "suggested_title": "Run Azure CLI Command '${AZURE_COMMAND}' in '${TASK_TITLE}'"
+        },
+        {
+            "codebundle": "azure-stdout-issue",
+            "file": "sli.robot",
+            "filepath": "codebundles/azure-stdout-issue/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear in its purpose of running a user-provided Azure CLI command and determining the health score based on the return string. It mentions specific tags such as 'azure' and 'cli', making it more human-readable and specific. The use of imported user variables adds to the clarity and specificity.",
+            "suggested_title": "Run Azure CLI Command and Evaluate Health Score for `${AZURE_COMMAND}`"
+        },
+        {
+            "codebundle": "azure-cmd",
+            "file": "runbook.robot",
+            "filepath": "codebundles/azure-cmd/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific, indicating that it runs a user-provided Azure CLI command and adds the output to the report. The tags also provide additional context. However, the imported user variables are not utilized in the title, which could enhance human readability and specificity.",
+            "suggested_title": "Run Azure CLI Command '${AZURE_COMMAND}' and Add Output to Report for Task '${TASK_TITLE}'"
+        },
+        {
+            "codebundle": "azure-cmd",
+            "file": "sli.robot",
+            "filepath": "codebundles/azure-cmd/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear in its purpose of running a user-provided Azure CLI command and determining the health score based on the return string. It mentions specific tags such as 'azure' and 'cli', making it more human-readable and specific. The use of imported user variables adds to the clarity and specificity.",
+            "suggested_title": "Run Azure CLI Command and Evaluate Health Score for `${AZURE_COMMAND}`"
+        },
+        {
+            "codebundle": "k8s-kubectl-cmd",
+            "file": "runbook.robot",
+            "filepath": "codebundles/k8s-kubectl-cmd/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific about running a user-provided kubectl command and adding the output to the report. It is human-readable and provides a specific action to be performed.",
+            "suggested_title": "Run Kubectl Command in `${KUBECTL_COMMAND}`"
+        },
+        {
+            "codebundle": "k8s-kubectl-cmd",
+            "file": "sli.robot",
+            "filepath": "codebundles/k8s-kubectl-cmd/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific, indicating that it runs a user provided kubectl command and pushes the metric as an SLI. It is also human-readable and includes relevant tags for easy categorization. The only improvement could be adding a specific 'Where' variable in backticks & curly braces, such as `$${WHERE}`.",
+            "suggested_title": "Run Kubectl Command and Push Metric as SLI in `${WHERE}`"
+        },
+        {
+            "codebundle": "gcloud-cmd",
+            "file": "runbook.robot",
+            "filepath": "codebundles/gcloud-cmd/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific, mentioning the use of gcloud command and adding output to a report. It is also human-readable. The tags provide additional context.",
+            "suggested_title": "Run User Provided GCloud Command and Add Output to Report in `${GCLOUD_COMMAND}`"
+        },
+        {
+            "codebundle": "gcloud-cmd",
+            "file": "sli.robot",
+            "filepath": "codebundles/gcloud-cmd/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 5,
+            "reasoning": "The task title is clear, human-readable, and specific. It indicates that the task runs a user-provided gcloud command and pushes the metric to the RunWhen Platform, making it clear what the task does. The tags provide additional context about the nature of the task. The imported user variables are well incorporated into the title, ensuring clarity.",
+            "suggested_title": "Run User Provided gcloud Command and Push Metric to RunWhen Platform in `${GCLOUD_COMMAND}`"
+        },
+        {
+            "codebundle": "aws-stdout-issue",
+            "file": "runbook.robot",
+            "filepath": "codebundles/aws-stdout-issue/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title provides a clear indication of what the task involves, running a user provided aws cli command. It is also readable and specific enough, with the use of imported user variables for 'TASK_TITLE'. However, it could be improved by adding the specific scope or 'Where' variable in backticks & curly braces, such as `$${AWS_REGION}`.",
+            "suggested_title": "Run AWS CLI Command in AWS Region `${AWS_REGION}`"
+        },
+        {
+            "codebundle": "aws-stdout-issue",
+            "file": "sli.robot",
+            "filepath": "codebundles/aws-stdout-issue/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific about running a user provided aws cli command, indicating error detection and pushing health scores. It includes relevant tags and imports the necessary user variables for clarity. The only improvement would be to include the 'Where' variable (AWS_REGION) in backticks & curly braces.",
+            "suggested_title": "Run AWS CLI Command in AWS Region `${AWS_REGION}`"
+        },
+        {
+            "codebundle": "curl-cmd",
+            "file": "runbook.robot",
+            "filepath": "codebundles/curl-cmd/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The title is clear and specific, indicating that the task runs a user-provided curl command and adds the output to the report. It uses the imported variable for the task title and includes relevant tags for clarity. However, it could be improved by including a specific 'Where' variable, such as the location or target of the curl command.",
+            "suggested_title": "Run User-Provided Curl Command and Add Output to Report for `${TASK_TITLE}` in `${SPECIFIC_LOCATION}`"
+        },
+        {
+            "codebundle": "curl-cmd",
+            "file": "sli.robot",
+            "filepath": "codebundles/curl-cmd/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The title is clear and specific about the task, and the documentation provides a good understanding of what the task does. The tags also provide additional context. However, the 'Where' variable is not explicitly mentioned, so the suggested_title includes the 'TASK_TITLE' variable as the most relevant 'Where' variable.",
+            "suggested_title": "Run CURL Command for `${TASK_TITLE}`"
+        },
+        {
+            "codebundle": "aws-cmd",
+            "file": "runbook.robot",
+            "filepath": "codebundles/aws-cmd/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear, human-readable, and specific. It provides an overview of the task's purpose and what it does with Amazon Web Services Command Line Interface (AWS CLI). It also specifies the tags related to the task. The imported user variables are used in the title effectively, and the 'Where' variable is represented by the AWS_REGION variable.",
+            "suggested_title": "Run AWS CLI Command in AWS Region `${AWS_REGION}`"
+        },
+        {
+            "codebundle": "aws-cmd",
+            "file": "sli.robot",
+            "filepath": "codebundles/aws-cmd/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific about running a user provided aws cli command, indicating error detection and pushing health scores. It includes relevant tags and imports the necessary user variables for clarity. The only improvement would be to include the 'Where' variable (AWS_REGION) in backticks & curly braces.",
+            "suggested_title": "Run AWS CLI Command in AWS Region `${AWS_REGION}`"
+        },
+        {
+            "codebundle": "curl-stdout-issue",
+            "file": "runbook.robot",
+            "filepath": "codebundles/curl-stdout-issue/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The title is clear and specific about the task of running a user-provided curl command and adding the non-empty return string to a report. It includes tags for clarity. The imported variables provide context and specificity.",
+            "suggested_title": "Run Curl Command and Add Non-Empty Result to Report in `${TASK_TITLE}`"
+        },
+        {
+            "codebundle": "curl-stdout-issue",
+            "file": "sli.robot",
+            "filepath": "codebundles/curl-stdout-issue/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific, indicating the purpose of running a user-provided curl command to check for errors and push a health score. It includes relevant tags and imported user variables. The only improvement would be to include a specific 'Where' variable instead of just 'generic'.",
+            "suggested_title": "Check Health Status with CURL_COMMAND in `${TASK_TITLE}`"
+        },
+        {
+            "codebundle": "gcloud-stdout-issue",
+            "file": "runbook.robot",
+            "filepath": "codebundles/gcloud-stdout-issue/runbook.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear and specific about running a user provided gcloud command. It mentions adding the output to the report which adds clarity. The tags provide additional context. However, it lacks a specific 'Where' variable, so the suggested_title sets the 'Where' variable as 'GCLOUD_COMMAND' which is the most relevant imported variable.",
+            "suggested_title": "Run User Provided GCloud Command in `${GCLOUD_COMMAND}` and Add Output to Report"
+        },
+        {
+            "codebundle": "gcloud-stdout-issue",
+            "file": "sli.robot",
+            "filepath": "codebundles/gcloud-stdout-issue/sli.robot",
+            "task": "${TASK_TITLE}",
+            "score": 4,
+            "reasoning": "The task title is clear, human-readable, and specific. It provides a clear understanding of what the task does and includes the 'Where' variable in backticks & curly braces. It also makes use of the imported user variables to create a meaningful placeholder for the 'Where' variable.",
+            "suggested_title": "Run GCLOUD_COMMAND in Specific GCloud Project"
+        }
+    ]
+}
