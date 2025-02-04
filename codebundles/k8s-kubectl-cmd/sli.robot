@@ -14,7 +14,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run Kubectl Command and Push Metric as SLI in `${WHERE}`
     [Documentation]    Runs a user provided kubectl command and pushes the metric as an SLI
     [Tags]    kubectl    cli    metric    sli    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -36,7 +36,7 @@ Suite Initialization
     ...    description=The kubectl command to run. Must produce a single value that can be pushed as a metric. Can use tools like jq. 
     ...    pattern=\w*
     ...    example="kubectl get pods -n online-boutique -o json | jq '[.items[]] | length'"
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run Kubectl Command and Push Metric as SLI in `${WHERE}`=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*

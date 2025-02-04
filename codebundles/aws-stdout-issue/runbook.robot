@@ -16,7 +16,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run AWS CLI Command in AWS Region `${AWS_REGION}`
     [Documentation]    Runs a user provided aws cli command and if the return string is non-empty, it's added to a report and used to raise an issue.
     [Tags]    aws    cli    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -72,7 +72,7 @@ Suite Initialization
     ...    description=The aws cli command to run. Can use tools like jq.
     ...    pattern=\w*
     ...    example=aws logs filter-log-events --log-group-name /aws/lambda/hello-error --filter-pattern "ERROR" | jq -r '.events[].message'
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run AWS CLI Command in AWS Region `${AWS_REGION}`=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*

@@ -15,7 +15,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run Curl Command and Add Non-Empty Result to Report in `${TASK_TITLE}`
     [Documentation]    Runs a user provided curl command and if the return string is non-empty, it's added to a report and used to raise an issue.
     [Tags]    curl    cli    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -50,7 +50,7 @@ Suite Initialization
     ...    description=The curl command to run. Can use tools like jq.
     ...    pattern=\w*
     ...    example="curl -X POST https://postman-echo.com/post --fail --silent --show-error | jq -r '.json'"
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run Curl Command and Add Non-Empty Result to Report in `${TASK_TITLE}`=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*

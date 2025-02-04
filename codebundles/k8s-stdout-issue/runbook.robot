@@ -15,7 +15,7 @@ Suite Setup         Suite Initialization
 
 
 *** Tasks ***
-${TASK_TITLE}
+Run User Provided Kubectl Command in `${KUBECTL_COMMAND}`
     [Documentation]    Runs a user provided kubectl command and if the return string is non-empty, it's added to a report and used to raise an issue.
     [Tags]    kubectl    cli    generic
     ${rsp}=    RW.CLI.Run Cli
@@ -58,7 +58,7 @@ Suite Initialization
     ...    description=The kubectl command to run. Can use tools like jq.
     ...    pattern=\w*
     ...    example="kubectl get events -n online-boutique | grep -i warning"
-    ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
+    Run User Provided Kubectl Command in `${KUBECTL_COMMAND}`=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*
