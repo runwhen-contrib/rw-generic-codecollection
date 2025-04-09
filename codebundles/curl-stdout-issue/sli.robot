@@ -19,8 +19,13 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Runs a user provided curl command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
     [Tags]    curl    cli    generic
+    IF  '${HEADERS}' != ''
+        Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND} -K ./HEADERS
+    END
+
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${CURL_COMMAND}
+    ...    secret_file__HEADERS=${HEADERS}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -32,6 +37,11 @@ ${TASK_TITLE}
 
 *** Keywords ***
 Suite Initialization
+    ${HEADERS}=        RW.Core.Import Secret    HEADERS
+    ...    type=string
+    ...    description=The secret containing any headers that should be passed along in the curl call. Must be in the form of a file that cURL can use with the -K option.
+    ...    pattern=\w*
+    ...    example='header = "Authorization: Bearer TOKEN"' 
     ${CURL_COMMAND}=    RW.Core.Import User Variable    CURL_COMMAND
     ...    type=string
     ...    description=The curl command to run. Can use tools like jq.
