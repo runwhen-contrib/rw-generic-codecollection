@@ -20,11 +20,11 @@ ${TASK_TITLE}
     [Documentation]    Runs a user-provided cURL command, optionally includes headers (-K ./HEADERS), optionally pipes output to POST_PROCESS, and adds the outputs to the report.
     [Tags]            curl    cli    generic
 
-    IF  '${HEADERS}' != ''
+    IF  $HEADERS != ''
         Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND} -K ./HEADERS
     END
 
-    IF  '${POST_PROCESS}' != ''
+    IF  $POST_PROCESS != ''
         Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND} | ${POST_PROCESS}
     END
 
@@ -49,9 +49,9 @@ Suite Initialization
 
     ${CURL_COMMAND}=     RW.Core.Import User Variable    CURL_COMMAND
     ...                 type=string
-    ...                 description=The base cURL command to run. Can include additional tooling or flags (e.g., jq).
+    ...                 description=The base cURL command to run.
     ...                 pattern=\w*
-    ...                 example="curl -X POST https://postman-echo.com/post --fail --silent --show-error | jq -r '.json'"
+    ...                 example="curl -X POST https://postman-echo.com/post --fail --silent --show-error 
 
     ${TASK_TITLE}=       RW.Core.Import User Variable    TASK_TITLE
     ...                 type=string
