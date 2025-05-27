@@ -1,7 +1,9 @@
 *** Settings ***
-Documentation       This taskset runs a user provided curl command and adds the output to the report. Command line tools like jq are available.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then a health score of 0 (unhealthy) is pushed, otherwise if there is no output, indicating no issues, then a 1 is pushed.
+...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
+
 Metadata            Author    jon-funk
-Metadata            Display Name    cURL CLI Command
+Metadata            Display Name    Metric from cURL CLI Command
 Metadata            Supports    cURL
 
 Library             BuiltIn
@@ -15,7 +17,7 @@ Suite Setup         Suite Initialization
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Runs a user provided curl command and adds the output to the report.
+    [Documentation]    Runs a user provided curl command and if the return string is non-empty it indicates an error was found, pushing a health score of 0, otherwise pushes a 1.
     [Tags]    curl    cli    generic
     IF  '${HEADERS}' != ''
         Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND} -K ./HEADERS
@@ -25,9 +27,12 @@ ${TASK_TITLE}
     ...    cmd=${CURL_COMMAND}
     ...    secret_file__HEADERS=${HEADERS}
     ${history}=    RW.CLI.Pop Shell History
-    RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-    RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-    RW.Core.Add Pre To Report    Commands Used: ${history}
+    ${STDOUT}=    Set Variable    ${rsp.stdout}
+    IF    """${rsp.stdout}""" != ""
+        RW.Core.Push Metric     0
+    ELSE
+        RW.Core.Push Metric     1
+    END
 
 
 *** Keywords ***
@@ -46,6 +51,5 @@ Suite Initialization
     ...    type=string
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*
-    ...    example="Curl the API endpoint and parse results with jq"
-    Set Suite Variable    ${TASK_TITLE}    ${TASK_TITLE}
-    Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND}
+    ...    example="Count the number of pods in the namespace"
+

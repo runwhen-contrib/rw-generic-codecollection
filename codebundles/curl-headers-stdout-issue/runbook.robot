@@ -3,7 +3,7 @@ Documentation       Runs an ad-hoc user-provided command, and pushes the command
 ...                 If no output is produced, the resulting metric is empty; if the command produces output, that exact text is used as the metric.
 ...                 User commands should produce the desired health metric or numeric value if needed—e.g., output "0" if unhealthy or "1" if healthy.
 Metadata            Author    stewartshea
-Metadata            Display Name    cURL CLI Command with Issue
+Metadata            Display Name    cURL CLI Command with Issue and Headers
 Metadata            Supports    cURL
 
 Library             BuiltIn
