@@ -22,6 +22,8 @@ ${TASK_TITLE}
     ...    cmd=${KUBECTL_COMMAND}
     ...    env={"KUBECONFIG":"./${kubeconfig.key}"}
     ...    secret_file__kubeconfig=${kubeconfig}
+    ...    timeout_seconds=300
+
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""

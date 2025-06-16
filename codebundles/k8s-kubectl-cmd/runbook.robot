@@ -21,6 +21,7 @@ ${TASK_TITLE}
     ...    cmd=${KUBECTL_COMMAND}
     ...    env={"KUBECONFIG":"./${kubeconfig.key}"}
     ...    secret_file__kubeconfig=${kubeconfig}
+    ...    timeout_seconds=300
     ${history}=    RW.CLI.Pop Shell History
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
