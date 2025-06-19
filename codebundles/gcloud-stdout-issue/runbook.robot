@@ -21,7 +21,7 @@ ${TASK_TITLE}
     ...    cmd=gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && ${GCLOUD_COMMAND}
     ...    env=${env}
     ...    secret_file__gcp_credentials_json=${gcp_credentials_json}
-    ...    timeout_seconds=300
+    ...    timeout_seconds=600
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""

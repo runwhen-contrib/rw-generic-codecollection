@@ -21,7 +21,7 @@ ${TASK_TITLE}
     [Tags]    azure    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
-    ...    timeout_seconds=300
+    ...    timeout_seconds=600
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""

@@ -24,7 +24,7 @@ ${TASK_TITLE}
     ...    env={"AWS_REGION":"${AWS_REGION}"}
     ...    secret__AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ...    secret__AWS_ACCESS_KEY_ID=${secret__AWS_ACCESS_KEY_ID}
-    ...    timeout_seconds=300
+    ...    timeout_seconds=600
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
