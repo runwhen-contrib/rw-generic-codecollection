@@ -22,7 +22,7 @@ ${TASK_TITLE}
     ...    env={"AWS_REGION":"${AWS_REGION}"}
     ...    secret__AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     ...    secret__AWS_ACCESS_KEY_ID=${secret__AWS_ACCESS_KEY_ID}
-    ...    timeout_seconds=600
+    ...    timeout_seconds=1200
     ${history}=    RW.CLI.Pop Shell History
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
