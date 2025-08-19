@@ -91,7 +91,6 @@ ${TASK_TITLE}
     ...        cmd=${full_command}
     ...        env=${env_dict}
     ...        secret_file__kubeconfig=${kubeconfig}
-    ...        secret_file__SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
     ...        timeout_seconds=1800
     
     # Push 1 for success (healthy), 0 for failure (unhealthy)
