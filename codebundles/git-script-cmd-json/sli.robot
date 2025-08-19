@@ -59,7 +59,7 @@ ${TASK_TITLE}
     # Setup SSH if SSH_PRIVATE_KEY is provided
     ${pre_commands}=    Set Variable    ${EMPTY}
     IF    $SSH_PRIVATE_KEY.value != ""
-        ${pre_commands}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
+        ${pre_commands}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&  
     END
     
     # Execute the script with full environment
@@ -101,7 +101,7 @@ Suite Initialization
     ${GIT_USERNAME}=    RW.Core.Import Secret    GIT_USERNAME
     ...    type=string
     ...    description=Git username for HTTPS authentication (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=myusername
     ...    default=${EMPTY}
     
@@ -125,7 +125,7 @@ Suite Initialization
     ...    kubeconfig
     ...    type=string
     ...    description=Kubernetes config file for cluster access (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     # Import required script command

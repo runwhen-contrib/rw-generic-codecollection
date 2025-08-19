@@ -83,7 +83,7 @@ ${TASK_TITLE}
     # Add SSH setup prefix if SSH key is provided
     ${ssh_setup}=    Set Variable    ${EMPTY}
     IF    $SSH_PRIVATE_KEY.value != ""
-        ${ssh_setup}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
+        ${ssh_setup}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&  
     END
     
     ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
@@ -118,7 +118,7 @@ Suite Initialization
     ...    SSH_PRIVATE_KEY
     ...    type=string
     ...    description=SSH private key for git repository access (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     # Import optional kubeconfig for Kubernetes operations
@@ -126,14 +126,14 @@ Suite Initialization
     ...    kubeconfig
     ...    type=string
     ...    description=Kubernetes config file for cluster access (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     # Import up to 10 environment variable pairs
     ${ENV_VAR_1_NAME}=    RW.Core.Import User Variable    ENV_VAR_1_NAME
     ...    type=string
     ...    description=Name of the first environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     ...    default=${EMPTY}
     
@@ -141,13 +141,13 @@ Suite Initialization
     ...    ENV_VAR_1_VALUE
     ...    type=string
     ...    description=Value of the first environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_2_NAME}=    RW.Core.Import User Variable    ENV_VAR_2_NAME
     ...    type=string
     ...    description=Name of the second environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     ...    default=${EMPTY}
     
@@ -155,13 +155,13 @@ Suite Initialization
     ...    ENV_VAR_2_VALUE
     ...    type=string
     ...    description=Value of the second environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_3_NAME}=    RW.Core.Import User Variable    ENV_VAR_3_NAME
     ...    type=string
     ...    description=Name of the third environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     ...    default=${EMPTY}
     
@@ -169,111 +169,111 @@ Suite Initialization
     ...    ENV_VAR_3_VALUE
     ...    type=string
     ...    description=Value of the third environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_4_NAME}=    RW.Core.Import User Variable    ENV_VAR_4_NAME
     ...    type=string
     ...    description=Name of the fourth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_4_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_4_VALUE
     ...    type=string
     ...    description=Value of the fourth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_5_NAME}=    RW.Core.Import User Variable    ENV_VAR_5_NAME
     ...    type=string
     ...    description=Name of the fifth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_5_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_5_VALUE
     ...    type=string
     ...    description=Value of the fifth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_6_NAME}=    RW.Core.Import User Variable    ENV_VAR_6_NAME
     ...    type=string
     ...    description=Name of the sixth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_6_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_6_VALUE
     ...    type=string
     ...    description=Value of the sixth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_7_NAME}=    RW.Core.Import User Variable    ENV_VAR_7_NAME
     ...    type=string
     ...    description=Name of the seventh environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_7_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_7_VALUE
     ...    type=string
     ...    description=Value of the seventh environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_8_NAME}=    RW.Core.Import User Variable    ENV_VAR_8_NAME
     ...    type=string
     ...    description=Name of the eighth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_8_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_8_VALUE
     ...    type=string
     ...    description=Value of the eighth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_9_NAME}=    RW.Core.Import User Variable    ENV_VAR_9_NAME
     ...    type=string
     ...    description=Name of the ninth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_9_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_9_VALUE
     ...    type=string
     ...    description=Value of the ninth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${ENV_VAR_10_NAME}=    RW.Core.Import User Variable    ENV_VAR_10_NAME
     ...    type=string
     ...    description=Name of the tenth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    default=${EMPTY}
     
     ${ENV_VAR_10_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_10_VALUE
     ...    type=string
     ...    description=Value of the tenth environment variable (optional)
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     # Import required script command
     ${SCRIPT_COMMAND}=    RW.Core.Import User Variable    SCRIPT_COMMAND
     ...    type=string
     ...    description=The script or command to execute with full environment context
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     
     ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
     ...    description=The name of the task to run. This helps identify the task in RunWhen Digital Assistants.
-    ...    pattern=\w*
+    ...    pattern=.*
     ...    example=
     ...    default=Execute Script with Environment Variables
     
