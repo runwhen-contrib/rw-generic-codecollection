@@ -1,10 +1,20 @@
 # Summary
 
 ## Codebundles
+* [curl-cmd](codebundles/curl-cmd/README.md)
+* [k8s-kubectl-cmd](codebundles/k8s-kubectl-cmd/README.md)
+* [grafana-loki-query](codebundles/grafana-loki-query/README.md)
+* [gcloud-stdout-issue](codebundles/gcloud-stdout-issue/README.md)
 * [gcloud-cmd](codebundles/gcloud-cmd/README.md)
+* [azure-cmd](codebundles/azure-cmd/README.md)
+* [aws-stdout-issue](codebundles/aws-stdout-issue/README.md)
+* [azure-stdout-issue](codebundles/azure-stdout-issue/README.md)
+* [k8s-stdout-issue](codebundles/k8s-stdout-issue/README.md)
+* [aws-cmd](codebundles/aws-cmd/README.md)
+* [curl-stdout-issue](codebundles/curl-stdout-issue/README.md)
+* [curl-headers-stdout-issue](codebundles/curl-headers-stdout-issue/README.md)
+* [curl-headers-cmd](codebundles/curl-headers-cmd/README.md)
+* [env-script-cmd](codebundles/env-script-cmd/README.md)
+* [git-script-cmd](codebundles/git-script-cmd/README.md)
 
 ## Keywords
-* [CLI](libraries/.docs/CLI.md)
-* [cli_utils](libraries/.docs/cli_utils.md)
-* [json_parser](libraries/.docs/json_parser.md)
-* [stdout_parser](libraries/.docs/stdout_parser.md)
