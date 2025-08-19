@@ -29,44 +29,44 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Add each configured environment variable if provided
-    IF    $ENV_VAR_1_NAME != '' and $ENV_VAR_1_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_1_NAME}=${ENV_VAR_1_VALUE}
+    IF    $ENV_VAR_1_NAME != "" and $ENV_VAR_1_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_1_NAME}=${ENV_VAR_1_VALUE.value}
     END
     
-    IF    $ENV_VAR_2_NAME != '' and $ENV_VAR_2_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_2_NAME}=${ENV_VAR_2_VALUE}
+    IF    $ENV_VAR_2_NAME != "" and $ENV_VAR_2_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_2_NAME}=${ENV_VAR_2_VALUE.value}
     END
     
-    IF    $ENV_VAR_3_NAME != '' and $ENV_VAR_3_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_3_NAME}=${ENV_VAR_3_VALUE}
+    IF    $ENV_VAR_3_NAME != "" and $ENV_VAR_3_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_3_NAME}=${ENV_VAR_3_VALUE.value}
     END
     
-    IF    $ENV_VAR_4_NAME != '' and $ENV_VAR_4_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_4_NAME}=${ENV_VAR_4_VALUE}
+    IF    $ENV_VAR_4_NAME != "" and $ENV_VAR_4_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_4_NAME}=${ENV_VAR_4_VALUE.value}
     END
     
-    IF    $ENV_VAR_5_NAME != '' and $ENV_VAR_5_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_5_NAME}=${ENV_VAR_5_VALUE}
+    IF    $ENV_VAR_5_NAME != "" and $ENV_VAR_5_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_5_NAME}=${ENV_VAR_5_VALUE.value}
     END
     
-    IF    $ENV_VAR_6_NAME != '' and $ENV_VAR_6_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_6_NAME}=${ENV_VAR_6_VALUE}
+    IF    $ENV_VAR_6_NAME != "" and $ENV_VAR_6_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_6_NAME}=${ENV_VAR_6_VALUE.value}
     END
     
-    IF    $ENV_VAR_7_NAME != '' and $ENV_VAR_7_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_7_NAME}=${ENV_VAR_7_VALUE}
+    IF    $ENV_VAR_7_NAME != "" and $ENV_VAR_7_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_7_NAME}=${ENV_VAR_7_VALUE.value}
     END
     
-    IF    $ENV_VAR_8_NAME != '' and $ENV_VAR_8_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_8_NAME}=${ENV_VAR_8_VALUE}
+    IF    $ENV_VAR_8_NAME != "" and $ENV_VAR_8_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_8_NAME}=${ENV_VAR_8_VALUE.value}
     END
     
-    IF    $ENV_VAR_9_NAME != '' and $ENV_VAR_9_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_9_NAME}=${ENV_VAR_9_VALUE}
+    IF    $ENV_VAR_9_NAME != "" and $ENV_VAR_9_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_9_NAME}=${ENV_VAR_9_VALUE.value}
     END
     
-    IF    $ENV_VAR_10_NAME != '' and $ENV_VAR_10_VALUE != ''
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_10_NAME}=${ENV_VAR_10_VALUE}
+    IF    $ENV_VAR_10_NAME != "" and $ENV_VAR_10_VALUE.value != ""
+        Set To Dictionary    ${env_dict}    ${ENV_VAR_10_NAME}=${ENV_VAR_10_VALUE.value}
     END
     
     # Setup KUBECONFIG if provided
@@ -75,14 +75,14 @@ ${TASK_TITLE}
     END
     
     # Setup SSH if provided
-    IF    $SSH_PRIVATE_KEY != ''
+    IF    $SSH_PRIVATE_KEY.value != ""
         Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
     END
     
     # Add SSH setup prefix if SSH key is provided
     ${ssh_setup}=    Set Variable    ${EMPTY}
-    IF    $SSH_PRIVATE_KEY != ''
-        ${ssh_setup}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
+    IF    $SSH_PRIVATE_KEY.value != ""
+        ${ssh_setup}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&
     END
     
     ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
@@ -91,6 +91,7 @@ ${TASK_TITLE}
     ...        cmd=${full_command}
     ...        env=${env_dict}
     ...        secret_file__kubeconfig=${kubeconfig}
+    ...        secret_file__SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
     ...        timeout_seconds=1800
     
     # Push 1 for success (healthy), 0 for failure (unhealthy)

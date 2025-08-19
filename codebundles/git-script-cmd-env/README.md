@@ -9,9 +9,9 @@ A generic codebundle designed for safely executing scripts with configurable env
 - **No JSON Parsing**: Avoids complexity and security issues of JSON parsing
 
 ## SLI
-The command provided must provide a single metric that is pushed to the RunWhen Platform. 
+The SLI pushes a health metric to the RunWhen Platform: 1 for success (healthy), 0 for failure (unhealthy). The metric is based on the script's exit code, not its output.
 
-Example: `git clone https://$GIT_TOKEN@github.com/private/repo.git /tmp/repo && /tmp/repo/scripts/health-check.sh | jq -r '.metric'`
+Example: `git clone https://$GIT_TOKEN@github.com/private/repo.git ./repo && bash ./repo/scripts/health-check.sh`
 
 ## TaskSet
 The command has all output added to the report for review during a RunSession. 

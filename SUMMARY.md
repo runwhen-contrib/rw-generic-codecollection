@@ -14,7 +14,7 @@
 * [curl-stdout-issue](codebundles/curl-stdout-issue/README.md)
 * [curl-headers-stdout-issue](codebundles/curl-headers-stdout-issue/README.md)
 * [curl-headers-cmd](codebundles/curl-headers-cmd/README.md)
-* [env-script-cmd](codebundles/env-script-cmd/README.md)
-* [git-script-cmd](codebundles/git-script-cmd/README.md)
+* [git-script-cmd-json](codebundles/git-script-cmd-json/README.md)
+* [git-script-cmd-env](codebundles/git-script-cmd-env/README.md)
 
 ## Keywords

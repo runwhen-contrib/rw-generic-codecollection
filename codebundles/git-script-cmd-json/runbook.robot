@@ -12,6 +12,7 @@ Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
+Library             Collections
 
 Suite Setup         Suite Initialization
 
@@ -30,30 +31,35 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Add all imported secrets as environment variables
-    IF    $SSH_PRIVATE_KEY != ''
-        Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
+    IF    $SSH_PRIVATE_KEY.value != ""
+        Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
     END
     
-    IF    $GIT_USERNAME != ''
-        Set To Dictionary    ${env_dict}    GIT_USERNAME=${GIT_USERNAME}
+    IF    $GIT_USERNAME.value != ""
+        Set To Dictionary    ${env_dict}    GIT_USERNAME=${GIT_USERNAME.value}
     END
     
-    IF    $GIT_TOKEN != ''
-        Set To Dictionary    ${env_dict}    GIT_TOKEN=${GIT_TOKEN}
+    IF    $GIT_TOKEN.value != ""
+        Set To Dictionary    ${env_dict}    GIT_TOKEN=${GIT_TOKEN.value}
     END
     
-    IF    $ADDITIONAL_SECRETS != ''
+    IF    $ADDITIONAL_SECRETS.value != ""
         # Parse additional secrets JSON and add to environment
-        ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS}''')    json
+        ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
         FOR    ${key}    ${value}    IN    &{additional_env}
             Set To Dictionary    ${env_dict}    ${key}=${value}
         END
     END
     
+    # Setup KUBECONFIG if provided
+    IF    $kubeconfig != ''
+        Set To Dictionary    ${env_dict}    KUBECONFIG=./${kubeconfig.key}
+    END
+    
     # Setup SSH if SSH_PRIVATE_KEY is provided
     ${pre_commands}=    Set Variable    ${EMPTY}
-    IF    $SSH_PRIVATE_KEY != ''
-        ${pre_commands}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && ssh-keyscan -t rsa github.com > ./.ssh_known_hosts 2>/dev/null && export GIT_SSH_COMMAND="ssh -i ./${SSH_PRIVATE_KEY.key} -o UserKnownHostsFile=./.ssh_known_hosts -o StrictHostKeyChecking=no -o IdentitiesOnly=yes" && 
+    IF    $SSH_PRIVATE_KEY.value != ""
+        ${pre_commands}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&
     END
     
     # Execute the script with full environment
@@ -62,7 +68,7 @@ ${TASK_TITLE}
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${full_command}
     ...        env=${env_dict}
-    ...        secret_file__SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
+    ...        secret_file__kubeconfig=${kubeconfig}
     ...        timeout_seconds=1800
 
     ${history}=    RW.CLI.Pop Shell History
@@ -105,6 +111,14 @@ Suite Initialization
     ...    example={"DATABASE_URL":"postgres://...", "API_KEY":"secret123", "SLACK_TOKEN":"xoxb-..."}
     ...    default=${EMPTY}
     
+    # Import optional kubeconfig for Kubernetes operations
+    ${kubeconfig}=    RW.Core.Import Secret
+    ...    kubeconfig
+    ...    type=string
+    ...    description=Kubernetes config file for cluster access (optional)
+    ...    pattern=\w*
+    ...    example=
+    
     # Import required script command
     ${SCRIPT_COMMAND}=    RW.Core.Import User Variable    SCRIPT_COMMAND
     ...    type=string
@@ -124,5 +138,6 @@ Suite Initialization
     Set Suite Variable    ${GIT_USERNAME}
     Set Suite Variable    ${GIT_TOKEN}
     Set Suite Variable    ${ADDITIONAL_SECRETS}
+    Set Suite Variable    ${kubeconfig}
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE} 
