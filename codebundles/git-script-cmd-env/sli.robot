@@ -29,44 +29,44 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Add each configured environment variable if provided
-    IF    $ENV_VAR_1_NAME != "" and $ENV_VAR_1_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_1_NAME}=${ENV_VAR_1_VALUE.value}
+    IF    $ENV_VAR_1_NAME != ""
+        ${env_1_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_1_NAME}=${ENV_VAR_1_VALUE.value}
     END
     
-    IF    $ENV_VAR_2_NAME != "" and $ENV_VAR_2_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_2_NAME}=${ENV_VAR_2_VALUE.value}
+    IF    $ENV_VAR_2_NAME != ""
+        ${env_2_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_2_NAME}=${ENV_VAR_2_VALUE.value}
     END
     
-    IF    $ENV_VAR_3_NAME != "" and $ENV_VAR_3_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_3_NAME}=${ENV_VAR_3_VALUE.value}
+    IF    $ENV_VAR_3_NAME != ""
+        ${env_3_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_3_NAME}=${ENV_VAR_3_VALUE.value}
     END
     
-    IF    $ENV_VAR_4_NAME != "" and $ENV_VAR_4_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_4_NAME}=${ENV_VAR_4_VALUE.value}
+    IF    $ENV_VAR_4_NAME != ""
+        ${env_4_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_4_NAME}=${ENV_VAR_4_VALUE.value}
     END
     
-    IF    $ENV_VAR_5_NAME != "" and $ENV_VAR_5_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_5_NAME}=${ENV_VAR_5_VALUE.value}
+    IF    $ENV_VAR_5_NAME != ""
+        ${env_5_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_5_NAME}=${ENV_VAR_5_VALUE.value}
     END
     
-    IF    $ENV_VAR_6_NAME != "" and $ENV_VAR_6_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_6_NAME}=${ENV_VAR_6_VALUE.value}
+    IF    $ENV_VAR_6_NAME != ""
+        ${env_6_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_6_NAME}=${ENV_VAR_6_VALUE.value}
     END
     
-    IF    $ENV_VAR_7_NAME != "" and $ENV_VAR_7_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_7_NAME}=${ENV_VAR_7_VALUE.value}
+    IF    $ENV_VAR_7_NAME != ""
+        ${env_7_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_7_NAME}=${ENV_VAR_7_VALUE.value}
     END
     
-    IF    $ENV_VAR_8_NAME != "" and $ENV_VAR_8_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_8_NAME}=${ENV_VAR_8_VALUE.value}
+    IF    $ENV_VAR_8_NAME != ""
+        ${env_8_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_8_NAME}=${ENV_VAR_8_VALUE.value}
     END
     
-    IF    $ENV_VAR_9_NAME != "" and $ENV_VAR_9_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_9_NAME}=${ENV_VAR_9_VALUE.value}
+    IF    $ENV_VAR_9_NAME != ""
+        ${env_9_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_9_NAME}=${ENV_VAR_9_VALUE.value}
     END
     
-    IF    $ENV_VAR_10_NAME != "" and $ENV_VAR_10_VALUE.value != ""
-        Set To Dictionary    ${env_dict}    ${ENV_VAR_10_NAME}=${ENV_VAR_10_VALUE.value}
+    IF    $ENV_VAR_10_NAME != ""
+        ${env_10_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    ${ENV_VAR_10_NAME}=${ENV_VAR_10_VALUE.value}
     END
     
     # Setup KUBECONFIG if provided
@@ -75,17 +75,16 @@ ${TASK_TITLE}
     END
     
     # Setup SSH if provided
-    IF    $SSH_PRIVATE_KEY.value != ""
-        Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
-    END
+    ${ssh_env_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
     
     # Add SSH setup prefix if SSH key is provided
-    ${ssh_setup}=    Set Variable    ${EMPTY}
-    IF    $SSH_PRIVATE_KEY.value != ""
+    ${ssh_setup}=    Set Variable    ""
+    ${ssh_prefix_status}=    Run Keyword And Return Status    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
+    IF    ${ssh_prefix_status}
         ${ssh_setup}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
     END
     
-    ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
+    ${full_command}=    Set Variable    ${ssh_setup}rm -rf ./repo && ${SCRIPT_COMMAND}
     
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${full_command}

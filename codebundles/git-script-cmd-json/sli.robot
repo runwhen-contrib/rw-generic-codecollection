@@ -31,19 +31,14 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Add all imported secrets as environment variables
-    IF    $SSH_PRIVATE_KEY.value != ""
-        Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
-    END
+    ${ssh_env_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
     
-    IF    $GIT_USERNAME.value != ""
-        Set To Dictionary    ${env_dict}    GIT_USERNAME=${GIT_USERNAME.value}
-    END
+    ${git_user_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    GIT_USERNAME=${GIT_USERNAME.value}
     
-    IF    $GIT_TOKEN.value != ""
-        Set To Dictionary    ${env_dict}    GIT_TOKEN=${GIT_TOKEN.value}
-    END
+    ${git_token_status}=    Run Keyword And Return Status    Set To Dictionary    ${env_dict}    GIT_TOKEN=${GIT_TOKEN.value}
     
-    IF    $ADDITIONAL_SECRETS.value != ""
+    ${additional_secrets_status}=    Run Keyword And Return Status    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
+    IF    ${additional_secrets_status}
         # Parse additional secrets JSON and add to environment
         ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
         FOR    ${key}    ${value}    IN    &{additional_env}
@@ -57,13 +52,14 @@ ${TASK_TITLE}
     END
     
     # Setup SSH if SSH_PRIVATE_KEY is provided
-    ${pre_commands}=    Set Variable    ${EMPTY}
-    IF    $SSH_PRIVATE_KEY.value != ""
+    ${pre_commands}=    Set Variable    ""
+    ${ssh_prefix_status}=    Run Keyword And Return Status    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' && 
+    IF    ${ssh_prefix_status}
         ${pre_commands}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&  
     END
     
     # Execute the script with full environment
-    ${full_command}=    Set Variable    ${pre_commands}${SCRIPT_COMMAND}
+    ${full_command}=    Set Variable    ${pre_commands}rm -rf ./repo && ${SCRIPT_COMMAND}
     
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${full_command}
