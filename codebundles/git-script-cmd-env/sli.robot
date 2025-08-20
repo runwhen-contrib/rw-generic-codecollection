@@ -103,6 +103,7 @@ ${TASK_TITLE}
         ...    title=Script Execution Failed
         ...    reproduce_hint=Check the script command and environment variables. Verify SSH key and repository access if using Git operations.
         ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
+        ...    next_steps=1. Verify the SCRIPT_COMMAND syntax is correct\n2. Check that all required environment variables are set with valid values\n3. If using SSH, ensure SSH_PRIVATE_KEY is valid and has access to the repository\n4. If using HTTPS, verify GIT_USERNAME and GIT_TOKEN are correct\n5. Test the script command locally to isolate the issue\n6. Check repository URL and access permissions
     END
     
     RW.Core.Push Metric    ${metric_value}
