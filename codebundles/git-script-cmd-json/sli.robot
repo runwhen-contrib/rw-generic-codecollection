@@ -86,7 +86,6 @@ ${TASK_TITLE}
     
     RW.Core.Push Metric    ${metric_value}
 
-
 *** Keywords ***
 Suite Initialization
     # Import optional SSH private key for git operations
