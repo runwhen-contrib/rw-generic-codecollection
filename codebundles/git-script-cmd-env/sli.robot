@@ -118,6 +118,7 @@ Suite Initialization
     ...    description=SSH private key for git repository access (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     
     # Import optional kubeconfig for Kubernetes operations
     ${kubeconfig}=    RW.Core.Import Secret
@@ -126,6 +127,7 @@ Suite Initialization
     ...    description=Kubernetes config file for cluster access (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     
     # Import up to 10 environment variable pairs (only showing first 3 for brevity)
     ${ENV_VAR_1_NAME}=    RW.Core.Import User Variable    ENV_VAR_1_NAME
@@ -133,7 +135,7 @@ Suite Initialization
     ...    description=Name of the first environment variable (optional)
     ...    pattern=.*
     ...    example=DATABASE_URL
-    ...    default=${EMPTY}
+    ...    default=''
     
     ${ENV_VAR_1_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_1_VALUE
@@ -141,13 +143,14 @@ Suite Initialization
     ...    description=Value of the first environment variable (optional)
     ...    pattern=.*
     ...    example=postgres://user:pass@host:5432/db
+    ...    optional=True
     
     ${ENV_VAR_2_NAME}=    RW.Core.Import User Variable    ENV_VAR_2_NAME
     ...    type=string
     ...    description=Name of the second environment variable (optional)
     ...    pattern=.*
     ...    example=API_KEY
-    ...    default=${EMPTY}
+    ...    default=''
     
     ${ENV_VAR_2_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_2_VALUE
@@ -155,13 +158,14 @@ Suite Initialization
     ...    description=Value of the second environment variable (optional)
     ...    pattern=.*
     ...    example=sk-1234567890abcdef
+    ...    optional=True
     
     ${ENV_VAR_3_NAME}=    RW.Core.Import User Variable    ENV_VAR_3_NAME
     ...    type=string
     ...    description=Name of the third environment variable (optional)
     ...    pattern=.*
     ...    example=GIT_TOKEN
-    ...    default=${EMPTY}
+    ...    default=''
     
     ${ENV_VAR_3_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_3_VALUE
@@ -169,64 +173,100 @@ Suite Initialization
     ...    description=Value of the third environment variable (optional)
     ...    pattern=.*
     ...    example=ghp_xxxxxxxxxxxxxxxxxxxx
+    ...    optional=True
     
     # Import remaining environment variables (4-10) with minimal descriptions
     ${ENV_VAR_4_NAME}=    RW.Core.Import User Variable    ENV_VAR_4_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the fourth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_4_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_4_VALUE
     ...    type=string
     ...    description=Value of the fourth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_5_NAME}=    RW.Core.Import User Variable    ENV_VAR_5_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the fifth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_5_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_5_VALUE
     ...    type=string
     ...    description=Value of the fifth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_6_NAME}=    RW.Core.Import User Variable    ENV_VAR_6_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the sixth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_6_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_6_VALUE
     ...    type=string
     ...    description=Value of the sixth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_7_NAME}=    RW.Core.Import User Variable    ENV_VAR_7_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the seventh environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_7_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_7_VALUE
     ...    type=string
     ...    description=Value of the seventh environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_8_NAME}=    RW.Core.Import User Variable    ENV_VAR_8_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the eighth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_8_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_8_VALUE
     ...    type=string
     ...    description=Value of the eighth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_9_NAME}=    RW.Core.Import User Variable    ENV_VAR_9_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the ninth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_9_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_9_VALUE
     ...    type=string
     ...    description=Value of the ninth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     ${ENV_VAR_10_NAME}=    RW.Core.Import User Variable    ENV_VAR_10_NAME
-    ...    default=${EMPTY}
+    ...    type=string
+    ...    description=Name of the tenth environment variable (optional)
+    ...    pattern=.*
+    ...    example=
+    ...    default=''
     ${ENV_VAR_10_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_10_VALUE
     ...    type=string
     ...    description=Value of the tenth environment variable (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     
     # Import required script command
     ${SCRIPT_COMMAND}=    RW.Core.Import User Variable    SCRIPT_COMMAND

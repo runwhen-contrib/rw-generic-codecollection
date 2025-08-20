@@ -86,7 +86,8 @@ Suite Initialization
     ...    description=SSH private key for git repository access (optional)
     ...    pattern=.*
     ...    example=-----BEGIN OPENSSH PRIVATE KEY-----\nkey_content_here\n-----END OPENSSH PRIVATE KEY-----
-    ...    default=${EMPTY}
+    ...    default=''
+    ...    optional=True
     
     # Import optional git HTTPS credentials
     ${GIT_USERNAME}=    RW.Core.Import Secret    GIT_USERNAME
@@ -94,14 +95,16 @@ Suite Initialization
     ...    description=Git username for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=myusername
-    ...    default=${EMPTY}
+    ...    default=''
+    ...    optional=True
     
     ${GIT_TOKEN}=    RW.Core.Import Secret    GIT_TOKEN
     ...    type=string
     ...    description=Git token/password for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=ghp_xxxxxxxxxxxxxxxxxxxx
-    ...    default=${EMPTY}
+    ...    default=''
+    ...    optional=True
     
     # Import additional secrets as JSON
     ${ADDITIONAL_SECRETS}=    RW.Core.Import Secret    ADDITIONAL_SECRETS
@@ -109,7 +112,8 @@ Suite Initialization
     ...    description=Additional secrets as JSON object to be loaded as environment variables (optional)
     ...    pattern=.*
     ...    example={"DATABASE_URL":"postgres://...", "API_KEY":"secret123", "SLACK_TOKEN":"xoxb-..."}
-    ...    default=${EMPTY}
+    ...    default=''
+    ...    optional=True
     
     # Import optional kubeconfig for Kubernetes operations
     ${kubeconfig}=    RW.Core.Import Secret
@@ -118,6 +122,7 @@ Suite Initialization
     ...    description=Kubernetes config file for cluster access (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     
     # Import required script command
     ${SCRIPT_COMMAND}=    RW.Core.Import User Variable    SCRIPT_COMMAND
