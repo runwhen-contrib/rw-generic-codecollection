@@ -57,7 +57,7 @@ ${TASK_TITLE}
     # Setup SSH if provided (reading from secure file)
     ${ssh_setup}=    Set Variable    ""
     IF    $SSH_PRIVATE_KEY.value != ""
-        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes' && 
+        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
     END
     
     # Execute the script with full environment
