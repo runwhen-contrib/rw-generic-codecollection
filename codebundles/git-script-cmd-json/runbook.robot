@@ -60,9 +60,12 @@ ${TASK_TITLE}
         ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
     END
     
-    # Execute the script with full environment
-    ${full_command}=    Set Variable    ${ssh_setup}${env_exports}rm -rf ./repo && ${SCRIPT_COMMAND}
-    
+    # Build command parts explicitly to avoid concatenation issues
+    IF   ${env_exports} == ""
+        ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
+    ELSE
+        ${full_command}=    Set Variable    ${ssh_setup}${env_exports}${SCRIPT_COMMAND}
+    END
 
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${full_command}

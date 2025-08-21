@@ -69,7 +69,9 @@ ${TASK_TITLE}
     
     # Setup SSH if provided (using secure file approach)
     ${ssh_setup}=    Set Variable    ""
-    ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+    IF    $SSH_PRIVATE_KEY.value != ""
+        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+    END
     
     # Build command parts explicitly to avoid concatenation issues
     IF   ${env_exports} == ""
