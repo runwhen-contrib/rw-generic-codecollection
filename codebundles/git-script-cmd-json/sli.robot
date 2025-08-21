@@ -30,24 +30,22 @@ ${TASK_TITLE}
     ${OS_PATH}=    Get Environment Variable    PATH
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
-    # Add all imported secrets as environment variables
-    IF    $SSH_PRIVATE_KEY.value != ""
-        Set To Dictionary    ${env_dict}    SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY.value}
-    END
+    # Build export commands for all secrets (reading from secure files)
+    ${env_exports}=    Set Variable    ""
     
+    # Add Git credentials as exports (only if they have values)
     IF    $GIT_USERNAME.value != ""
-        Set To Dictionary    ${env_dict}    GIT_USERNAME=${GIT_USERNAME.value}
+        ${env_exports}=    Set Variable    ${env_exports}export GIT_USERNAME="$(cat ./${GIT_USERNAME.key})" && 
     END
-    
     IF    $GIT_TOKEN.value != ""
-        Set To Dictionary    ${env_dict}    GIT_TOKEN=${GIT_TOKEN.value}
+        ${env_exports}=    Set Variable    ${env_exports}export GIT_TOKEN="$(cat ./${GIT_TOKEN.key})" && 
     END
     
+    # Add additional secrets from JSON (only if JSON is provided)
     IF    $ADDITIONAL_SECRETS.value != ""
-        # Parse additional secrets JSON and add to environment
-        ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
+        ${additional_env}=    Evaluate    json.loads(open('./${ADDITIONAL_SECRETS.key}').read())    json
         FOR    ${key}    ${value}    IN    &{additional_env}
-            Set To Dictionary    ${env_dict}    ${key}=${value}
+            ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
         END
     END
     
@@ -56,19 +54,27 @@ ${TASK_TITLE}
         Set To Dictionary    ${env_dict}    KUBECONFIG=./${kubeconfig.key}
     END
     
-    # Setup SSH if SSH_PRIVATE_KEY is provided
-    ${pre_commands}=    Set Variable    ${EMPTY}
+    # Setup SSH if provided (reading from secure file)
+    ${ssh_setup}=    Set Variable    ""
     IF    $SSH_PRIVATE_KEY.value != ""
-        ${pre_commands}=    Set Variable    echo "$SSH_PRIVATE_KEY" > private_key_file && chmod 600 private_key_file && export GIT_SSH_COMMAND='ssh -i private_key_file -o IdentitiesOnly=yes' &&  
+        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
     END
     
-    # Execute the script with full environment
-    ${full_command}=    Set Variable    ${pre_commands}${SCRIPT_COMMAND}
-    
+    # Build command parts explicitly to avoid concatenation issues
+    IF   ${env_exports} == ""
+        ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
+    ELSE
+        ${full_command}=    Set Variable    ${ssh_setup}${env_exports}${SCRIPT_COMMAND}
+    END
+
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${full_command}
     ...        env=${env_dict}
     ...        secret_file__kubeconfig=${kubeconfig}
+    ...        secret_file__SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
+    ...        secret_file__GIT_USERNAME=${GIT_USERNAME}
+    ...        secret_file__GIT_TOKEN=${GIT_TOKEN}
+    ...        secret_file__ADDITIONAL_SECRETS=${ADDITIONAL_SECRETS}
     ...        timeout_seconds=1800
     
     # Push 1 for success (healthy), 0 for failure (unhealthy)
@@ -82,10 +88,10 @@ ${TASK_TITLE}
         ...    title=Script Execution Failed
         ...    reproduce_hint=Check the script command and environment variables. Verify SSH key and repository access if using Git operations.
         ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
+        ...    next_steps=1. Verify the SCRIPT_COMMAND syntax is correct\n2. Check GIT_USERNAME and GIT_TOKEN are set correctly for HTTPS authentication\n3. If using SSH, ensure SSH_PRIVATE_KEY is valid and has repository access\n4. Validate ADDITIONAL_SECRETS JSON format if using additional environment variables\n5. Test the script command locally to isolate the issue\n6. Check repository URL and access permissions
     END
     
     RW.Core.Push Metric    ${metric_value}
-
 
 *** Keywords ***
 Suite Initialization
@@ -95,7 +101,8 @@ Suite Initialization
     ...    description=SSH private key for git repository access (optional)
     ...    pattern=.*
     ...    example=-----BEGIN OPENSSH PRIVATE KEY-----\nkey_content_here\n-----END OPENSSH PRIVATE KEY-----
-    ...    default=${EMPTY}
+    ...    default=""
+    ...    optional=True
     
     # Import optional git HTTPS credentials
     ${GIT_USERNAME}=    RW.Core.Import Secret    GIT_USERNAME
@@ -103,14 +110,16 @@ Suite Initialization
     ...    description=Git username for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=myusername
-    ...    default=${EMPTY}
+    ...    default=""
+    ...    optional=True
     
     ${GIT_TOKEN}=    RW.Core.Import Secret    GIT_TOKEN
     ...    type=string
     ...    description=Git token/password for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=ghp_xxxxxxxxxxxxxxxxxxxx
-    ...    default=${EMPTY}
+    ...    default=""
+    ...    optional=True
     
     # Import additional secrets as JSON
     ${ADDITIONAL_SECRETS}=    RW.Core.Import Secret    ADDITIONAL_SECRETS
@@ -118,7 +127,8 @@ Suite Initialization
     ...    description=Additional secrets as JSON object to be loaded as environment variables (optional)
     ...    pattern=.*
     ...    example={"DATABASE_URL":"postgres://...", "API_KEY":"secret123", "SLACK_TOKEN":"xoxb-..."}
-    ...    default=${EMPTY}
+    ...    default=""
+    ...    optional=True
     
     # Import optional kubeconfig for Kubernetes operations
     ${kubeconfig}=    RW.Core.Import Secret
@@ -127,6 +137,7 @@ Suite Initialization
     ...    description=Kubernetes config file for cluster access (optional)
     ...    pattern=.*
     ...    example=
+    ...    optional=True
     
     # Import required script command
     ${SCRIPT_COMMAND}=    RW.Core.Import User Variable    SCRIPT_COMMAND
