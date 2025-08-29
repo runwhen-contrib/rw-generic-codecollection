@@ -74,7 +74,7 @@ ${TASK_TITLE}
     END
     
     # Build command parts explicitly to avoid concatenation issues
-    IF   ${env_exports} == ""
+    IF    $env_exports == ""
         ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
     ELSE
         ${full_command}=    Set Variable    ${ssh_setup}${env_exports}${SCRIPT_COMMAND}
