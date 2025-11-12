@@ -96,7 +96,7 @@ ${TASK_TITLE}
     ...        secret_file__ENV_VAR_8_VALUE=${ENV_VAR_8_VALUE}
     ...        secret_file__ENV_VAR_9_VALUE=${ENV_VAR_9_VALUE}
     ...        secret_file__ENV_VAR_10_VALUE=${ENV_VAR_10_VALUE}
-    ...        timeout_seconds=1800
+    ...        timeout_seconds=${TIMEOUT_SECONDS}
 
     ${history}=    RW.CLI.Pop Shell History
 
@@ -293,7 +293,13 @@ Suite Initialization
     ...    pattern=.*
     ...    example=
     ...    default=Execute Script with Environment Variables
-    
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=1800
+    ...    default=1800
+
     # Set all suite variables
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${kubeconfig}
@@ -319,3 +325,4 @@ Suite Initialization
     Set Suite Variable    ${ENV_VAR_10_VALUE}
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE} 
+    Set Suite Variable    ${TIMEOUT_SECONDS}

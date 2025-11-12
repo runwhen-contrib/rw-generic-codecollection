@@ -75,7 +75,7 @@ ${TASK_TITLE}
     ...        secret_file__GIT_USERNAME=${GIT_USERNAME}
     ...        secret_file__GIT_TOKEN=${GIT_TOKEN}
     ...        secret_file__ADDITIONAL_SECRETS=${ADDITIONAL_SECRETS}
-    ...        timeout_seconds=1800
+    ...        timeout_seconds=${TIMEOUT_SECONDS}
 
     ${history}=    RW.CLI.Pop Shell History
 
@@ -143,7 +143,14 @@ Suite Initialization
     ...    pattern=.*
     ...    example=Deploy Application from Private Repository
     ...    default=Execute Script with Secrets
-    
+
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=1800
+    ...    default=1800
+
     # Set suite variables
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${GIT_USERNAME}
@@ -152,3 +159,4 @@ Suite Initialization
     Set Suite Variable    ${kubeconfig}
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE} 
+    Set Suite Variable    ${TIMEOUT_SECONDS}

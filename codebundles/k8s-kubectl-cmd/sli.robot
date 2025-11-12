@@ -21,6 +21,7 @@ ${TASK_TITLE}
     ...    cmd=${KUBECTL_COMMAND}
     ...    env={"KUBECONFIG":"./${kubeconfig.key}"}
     ...    secret_file__kubeconfig=${kubeconfig}
+    ...    timeout_seconds=${TIMEOUT_SECONDS}
     RW.Core.Push Metric    ${rsp.stdout}
 
 *** Keywords ***
@@ -41,3 +42,9 @@ Suite Initialization
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*
     ...    example="Count the number of pods in the namespace"
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=120
+    ...    default=120
