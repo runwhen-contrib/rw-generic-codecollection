@@ -94,7 +94,7 @@ ${TASK_TITLE}
     ...        secret_file__ENV_VAR_8_VALUE=${ENV_VAR_8_VALUE}
     ...        secret_file__ENV_VAR_9_VALUE=${ENV_VAR_9_VALUE}
     ...        secret_file__ENV_VAR_10_VALUE=${ENV_VAR_10_VALUE}
-    ...        timeout_seconds=1800
+    ...        timeout_seconds=${TIMEOUT_SECONDS}
 
     
     # Push 1 for success (healthy), 0 for failure (unhealthy)
@@ -286,6 +286,13 @@ Suite Initialization
     ...    pattern=.*
     ...    example=Check Application Health from Private Repository
     ...    default=Execute Script Metric with Environment Variables
+
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=120
+    ...    default=120
     
     # Set all suite variables
     Set Suite Variable    ${SSH_PRIVATE_KEY}
@@ -311,4 +318,5 @@ Suite Initialization
     Set Suite Variable    ${ENV_VAR_10_NAME}
     Set Suite Variable    ${ENV_VAR_10_VALUE}
     Set Suite Variable    ${SCRIPT_COMMAND}
-    Set Suite Variable    ${TASK_TITLE} 
+    Set Suite Variable    ${TASK_TITLE}
+    Set Suite Variable    ${TIMEOUT_SECONDS}

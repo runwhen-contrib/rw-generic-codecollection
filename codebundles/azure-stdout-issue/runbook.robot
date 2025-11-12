@@ -21,7 +21,7 @@ ${TASK_TITLE}
     [Tags]    azure    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
-    ...    timeout_seconds=1200
+    ...    timeout_seconds=${TIMEOUT_SECONDS}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -84,4 +84,10 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=3
     ...    default=3
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=300
+    ...    default=300
 

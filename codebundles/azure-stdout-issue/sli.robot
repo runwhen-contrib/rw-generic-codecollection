@@ -22,6 +22,7 @@ ${TASK_TITLE}
     [Tags]    azure    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
+    ...    timeout_seconds=${TIMEOUT_SECONDS}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -47,3 +48,9 @@ Suite Initialization
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
     ...    pattern=\w*
     ...    example="Count the number of pods in the namespace"
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=60
+    ...    default=60
