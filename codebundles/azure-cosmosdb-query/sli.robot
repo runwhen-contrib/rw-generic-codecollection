@@ -27,11 +27,12 @@ ${TASK_TITLE}
 
 *** Keywords ***
 Suite Initialization
-    ${cosmosdb_endpoint}=    RW.Core.Import Secret
-    ...    cosmosdb_endpoint
+    ${COSMOSDB_ENDPOINT}=    RW.Core.Import User Variable
+    ...    COSMOSDB_ENDPOINT
     ...    type=string
     ...    description=The Cosmos DB account endpoint URL (e.g., https://myaccount.documents.azure.com:443/)
     ...    pattern=\w*
+    ...    example=https://myaccount.documents.azure.com:443/
     ${cosmosdb_key}=    RW.Core.Import Secret
     ...    cosmosdb_key
     ...    type=string
@@ -64,5 +65,5 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Count error documents in Cosmos DB"
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${cosmosdb_endpoint}    ${cosmosdb_key}
+    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.value}
 

@@ -18,7 +18,7 @@ SELECT COUNT(1) FROM c WHERE c.status = 'error'
 ```
 
 ## Requirements
-- **cosmosdb_endpoint** (secret): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
+- **COSMOSDB_ENDPOINT** (user variable): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
 - **cosmosdb_key** (secret): The Cosmos DB account key
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
@@ -99,6 +99,7 @@ TASK_TITLE="Get recent failed transactions"
 - Count query results for metrics
 - Full JSON result output for TaskSet
 - Flexible query configuration per use case
+- Automatic error handling with severity 3 issue creation on connection or query failures
 
 ## Notes
 - Uses the Azure Cosmos DB Python SDK (`azure-cosmos`)

@@ -4,6 +4,8 @@ This directory contains test infrastructure for the `azure-cosmosdb-query` gener
 
 ## Prerequisites
 
+**IMPORTANT**: These tests should be run inside the codecollection devtools Docker container, as they require `RW.Core` and other RunWhen libraries that are provided by the base image.
+
 1. **Azure CLI**: Install and authenticate
    ```bash
    az login

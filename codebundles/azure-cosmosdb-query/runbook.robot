@@ -17,13 +17,25 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Executes a user-provided Cosmos DB SQL query and adds the results to the report.
     [Tags]    azure    cosmosdb    query    generic
-    ${results}=    RW.Azure.Cosmosdb.Query Container
-    ...    ${DATABASE_NAME}
-    ...    ${CONTAINER_NAME}
-    ...    ${COSMOSDB_QUERY}
-    ...    ${QUERY_PARAMETERS}
-    RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
-    RW.Core.Add Pre To Report    Results:\n${results}
+    TRY
+        ${results}=    RW.Azure.Cosmosdb.Query Container
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
+        RW.Core.Add Pre To Report    Results:\n${results}
+    EXCEPT    AS    ${error_message}
+        RW.Core.Add Issue
+        ...    title=Cosmos DB Query Failed
+        ...    severity=3
+        ...    expected=Query should execute successfully
+        ...    actual=Query execution failed with error
+        ...    reproduce_hint=Execute query: ${COSMOSDB_QUERY} against database ${DATABASE_NAME}, container ${CONTAINER_NAME}
+        ...    next_steps=Check Cosmos DB connection, verify endpoint and key are correct, ensure database and container exist, and verify query syntax
+        ...    details=Failed to execute Cosmos DB query.\n\nError: ${error_message}\n\nEndpoint: ${COSMOSDB_ENDPOINT}\nDatabase: ${DATABASE_NAME}\nContainer: ${CONTAINER_NAME}\nQuery: ${COSMOSDB_QUERY}
+        RW.Core.Add Pre To Report    Error executing query: ${error_message}
+    END
 
 
 *** Keywords ***
@@ -65,5 +77,5 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Query Cosmos DB for error documents"
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${cosmosdb_endpoint}    ${cosmosdb_key}
+    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.value}
 

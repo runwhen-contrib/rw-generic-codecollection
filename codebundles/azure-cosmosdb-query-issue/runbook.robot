@@ -18,41 +18,54 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Executes a user-provided Cosmos DB SQL query and if results are returned, raises an issue.
     [Tags]    azure    cosmosdb    query    generic    issue
-    ${results}=    RW.Azure.Cosmosdb.Query Container
-    ...    ${DATABASE_NAME}
-    ...    ${CONTAINER_NAME}
-    ...    ${COSMOSDB_QUERY}
-    ...    ${QUERY_PARAMETERS}
-    ${count}=    RW.Azure.Cosmosdb.Count Query Results
-    ...    ${DATABASE_NAME}
-    ...    ${CONTAINER_NAME}
-    ...    ${COSMOSDB_QUERY}
-    ...    ${QUERY_PARAMETERS}
-    
-    IF    ${count} > 0
+    TRY
+        ${results}=    RW.Azure.Cosmosdb.Query Container
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        ${count}=    RW.Azure.Cosmosdb.Count Query Results
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        
+        IF    ${count} > 0
+            RW.Core.Add Issue
+            ...    title=${ISSUE_TITLE}
+            ...    severity=${ISSUE_SEVERITY}
+            ...    expected=The query should return no results, indicating no errors were found.
+            ...    actual=Query returned ${count} results, indicating errors were found.
+            ...    reproduce_hint=Query Cosmos DB with: ${COSMOSDB_QUERY}
+            ...    next_steps=${ISSUE_NEXT_STEPS}
+            ...    details=${ISSUE_DETAILS}\n\nQuery Results:\n${results}
+            RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
+            RW.Core.Add Pre To Report    Found ${count} results:\n${results}
+        ELSE
+            RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
+            RW.Core.Add Pre To Report    No results returned - no errors found.
+        END
+    EXCEPT    AS    ${error_message}
         RW.Core.Add Issue
-        ...    title=${ISSUE_TITLE}
-        ...    severity=${ISSUE_SEVERITY}
-        ...    expected=The query should return no results, indicating no errors were found.
-        ...    actual=Query returned ${count} results, indicating errors were found.
-        ...    reproduce_hint=Query Cosmos DB with: ${COSMOSDB_QUERY}
-        ...    next_steps=${ISSUE_NEXT_STEPS}
-        ...    details=${ISSUE_DETAILS}\n\nQuery Results:\n${results}
-        RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
-        RW.Core.Add Pre To Report    Found ${count} results:\n${results}
-    ELSE
-        RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
-        RW.Core.Add Pre To Report    No results returned - no errors found.
+        ...    title=Cosmos DB Query Failed
+        ...    severity=3
+        ...    expected=Query should execute successfully
+        ...    actual=Query execution failed with error
+        ...    reproduce_hint=Execute query: ${COSMOSDB_QUERY} against database ${DATABASE_NAME}, container ${CONTAINER_NAME}
+        ...    next_steps=Check Cosmos DB connection, verify endpoint and key are correct, ensure database and container exist, and verify query syntax
+        ...    details=Failed to execute Cosmos DB query.\n\nError: ${error_message}\n\nEndpoint: ${COSMOSDB_ENDPOINT}\nDatabase: ${DATABASE_NAME}\nContainer: ${CONTAINER_NAME}\nQuery: ${COSMOSDB_QUERY}
+        RW.Core.Add Pre To Report    Error executing query: ${error_message}
     END
 
 
 *** Keywords ***
 Suite Initialization
-    ${cosmosdb_endpoint}=    RW.Core.Import Secret
-    ...    cosmosdb_endpoint
+    ${COSMOSDB_ENDPOINT}=    RW.Core.Import User Variable
+    ...    COSMOSDB_ENDPOINT
     ...    type=string
     ...    description=The Cosmos DB account endpoint URL (e.g., https://myaccount.documents.azure.com:443/)
     ...    pattern=\w*
+    ...    example=https://myaccount.documents.azure.com:443/
     ${cosmosdb_key}=    RW.Core.Import Secret
     ...    cosmosdb_key
     ...    type=string
@@ -109,5 +122,5 @@ Suite Initialization
     ...    example=3
     ...    default=3
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${cosmosdb_endpoint}    ${cosmosdb_key}
+    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.value}
 

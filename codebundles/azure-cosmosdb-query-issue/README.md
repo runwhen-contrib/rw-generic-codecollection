@@ -8,7 +8,7 @@ Executes a user-provided Cosmos DB SQL query and raises an issue if results are 
 Executes a user-provided Cosmos DB SQL query and pushes a health metric: 1 (healthy) if no results, 0 (unhealthy) if results are found.
 
 ## Requirements
-- **cosmosdb_endpoint** (secret): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
+- **COSMOSDB_ENDPOINT** (user variable): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
 - **cosmosdb_key** (secret): The Cosmos DB account key
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
@@ -110,6 +110,7 @@ TASK_TITLE="Monitor for stale records"
 - Configurable issue title, severity, and next steps
 - Health metrics for monitoring
 - Cross-partition query support
+- Automatic error handling with severity 3 issue creation on connection or query failures
 
 ## Notes
 - Uses the Azure Cosmos DB Python SDK (`azure-cosmos`)
