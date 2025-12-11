@@ -16,6 +16,7 @@ tasks:
   setup:
     desc: "Set up Azure Cosmos DB test infrastructure"
     cmds:
+      - task: install-python-deps
       - task: register-provider
       - task: create-resource-group
       - task: create-cosmosdb-account
@@ -23,6 +24,21 @@ tasks:
       - task: create-container
       - task: populate-test-data
       - task: show-credentials
+
+  install-python-deps:
+    desc: "Install required Python packages"
+    cmds:
+      - |
+        echo "Installing Python dependencies..."
+        
+        if ! python3 -c "import azure.cosmos" &> /dev/null; then
+          echo "Installing azure-cosmos package..."
+          pip3 install azure-cosmos>=4.5.1
+          echo "✅ azure-cosmos installed"
+        else
+          echo "✅ azure-cosmos already installed"
+        fi
+    silent: false
 
   register-provider:
     desc: "Register Microsoft.DocumentDB provider (required for Cosmos DB)"
@@ -71,14 +87,14 @@ tasks:
           --enable-free-tier false
         
         # Save account name for later use
-        echo "{{.COSMOSDB_ACCOUNT}}" > ./cosmosdb_account_name.txt
+        echo "{{.COSMOSDB_ACCOUNT}}" > cosmosdb_account_name.txt
     silent: false
 
   create-database:
     desc: "Create Cosmos DB database"
     cmds:
       - |
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Creating database {{.DATABASE_NAME}}..."
         az cosmosdb sql database create \
           --account-name $ACCOUNT_NAME \
@@ -91,7 +107,7 @@ tasks:
     desc: "Create Cosmos DB container"
     cmds:
       - |
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Creating container {{.CONTAINER_NAME}}..."
         az cosmosdb sql container create \
           --account-name $ACCOUNT_NAME \
@@ -105,9 +121,9 @@ tasks:
     desc: "Populate test data using Python script"
     cmds:
       - |
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Populating test data..."
-        python3 ./populate_test_data.py \
+        python3 populate_test_data.py \
           --account-name $ACCOUNT_NAME \
           --resource-group {{.RESOURCE_GROUP}} \
           --database {{.DATABASE_NAME}} \
@@ -118,7 +134,7 @@ tasks:
     desc: "Display Cosmos DB connection information"
     cmds:
       - |
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo ""
         echo "========================================="
         echo "Cosmos DB Test Infrastructure Ready!"
@@ -159,7 +175,7 @@ tasks:
     cmds:
       - |
         echo "Validating Robot Framework syntax..."
-        python3 -m robot.libdoc RW.Azure.Cosmosdb ./Cosmosdb_keywords.html
+        python3 -m robot.libdoc RW.Azure.Cosmosdb Cosmosdb_keywords.html
         python3 -m robot --dryrun --output NONE --report NONE --log NONE runbook.robot
         python3 -m robot --dryrun --output NONE --report NONE --log NONE sli.robot
         echo "Syntax validation passed!"
@@ -169,13 +185,13 @@ tasks:
     desc: "Run integration tests (requires setup)"
     cmds:
       - |
-        if [ ! -f ./cosmosdb_account_name.txt ]; then
+        if [ ! -f cosmosdb_account_name.txt ]; then
           echo "ERROR: Test infrastructure not set up. Run 'task setup' first."
           exit 1
         fi
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Running integration tests..."
-        python3 ./run_integration_tests.py \
+        python3 run_integration_tests.py \
           --account-name $ACCOUNT_NAME \
           --resource-group {{.RESOURCE_GROUP}} \
           --database {{.DATABASE_NAME}} \
@@ -194,7 +210,7 @@ tasks:
           --no-wait
         
         # Clean up local files
-        rm -f ./cosmosdb_account_name.txt
+        rm -f cosmosdb_account_name.txt
         
         echo "Resource group deletion initiated (running in background)"
         echo "It may take a few minutes to complete."
@@ -204,12 +220,12 @@ tasks:
     desc: "Check status of test infrastructure"
     cmds:
       - |
-        if [ ! -f ./cosmosdb_account_name.txt ]; then
+        if [ ! -f cosmosdb_account_name.txt ]; then
           echo "No test infrastructure found."
           exit 0
         fi
         
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Checking status of Cosmos DB account: $ACCOUNT_NAME"
         echo ""
         
@@ -224,7 +240,7 @@ tasks:
     desc: "View Cosmos DB metrics and logs"
     cmds:
       - |
-        ACCOUNT_NAME=$(cat ./cosmosdb_account_name.txt)
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
         echo "Fetching recent metrics..."
         az monitor metrics list \
           --resource "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/{{.RESOURCE_GROUP}}/providers/Microsoft.DocumentDB/databaseAccounts/$ACCOUNT_NAME" \
@@ -241,44 +257,65 @@ tasks:
         echo "Checking prerequisites..."
         echo ""
         
+        EXIT_CODE=0
+        
         # Check Azure CLI
         if ! command -v az &> /dev/null; then
           echo "❌ Azure CLI not found. Install from: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
-          exit 1
+          EXIT_CODE=1
+        else
+          echo "✅ Azure CLI installed: $(az --version | head -n1)"
         fi
-        echo "✅ Azure CLI installed: $(az --version | head -n1)"
         
         # Check Azure login
         if ! az account show &> /dev/null; then
           echo "❌ Not logged into Azure. Run: az login"
-          exit 1
+          EXIT_CODE=1
+        else
+          SUBSCRIPTION=$(az account show --query name -o tsv)
+          echo "✅ Logged into Azure subscription: $SUBSCRIPTION"
         fi
-        SUBSCRIPTION=$(az account show --query name -o tsv)
-        echo "✅ Logged into Azure subscription: $SUBSCRIPTION"
         
         # Check Python
         if ! command -v python3 &> /dev/null; then
           echo "❌ Python 3 not found"
-          exit 1
+          EXIT_CODE=1
+        else
+          echo "✅ Python installed: $(python3 --version)"
         fi
-        echo "✅ Python installed: $(python3 --version)"
+        
+        # Check pip
+        if ! command -v pip3 &> /dev/null; then
+          echo "⚠️  pip3 not found. You may need to install it separately."
+        else
+          echo "✅ pip3 installed"
+        fi
         
         # Check azure-cosmos package
         if ! python3 -c "import azure.cosmos" &> /dev/null; then
-          echo "⚠️  azure-cosmos package not installed. Install with: pip install azure-cosmos"
+          echo "⚠️  azure-cosmos package not installed."
+          echo "   Run: pip3 install azure-cosmos"
+          echo "   Or run 'task install-python-deps' to install automatically"
         else
           echo "✅ azure-cosmos package installed"
         fi
         
         # Check Robot Framework
         if ! command -v robot &> /dev/null; then
-          echo "⚠️  Robot Framework not installed. Install with: pip install robotframework"
+          echo "⚠️  Robot Framework not installed."
+          echo "   Run: pip3 install robotframework"
         else
           echo "✅ Robot Framework installed"
         fi
         
         echo ""
-        echo "Prerequisites check complete!"
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "✅ Prerequisites check passed!"
+        else
+          echo "❌ Some required prerequisites are missing. Please fix the issues above."
+        fi
+        
+        exit $EXIT_CODE
     silent: false
 
   help:
@@ -288,13 +325,14 @@ tasks:
         echo "Azure Cosmos DB Test Infrastructure Tasks"
         echo ""
         echo "Available tasks:"
-        echo "  setup              - Create all test infrastructure (resource group, Cosmos DB, test data)"
-        echo "  test               - Run syntax and integration tests"
-        echo "  status             - Check status of test infrastructure"
-        echo "  logs               - View Cosmos DB metrics"
-        echo "  cleanup            - Delete all test infrastructure"
-        echo "  check-prerequisites- Check if prerequisites are installed"
-        echo "  register-provider  - Register Microsoft.DocumentDB provider (auto-run by setup)"
+        echo "  setup               - Create all test infrastructure (resource group, Cosmos DB, test data)"
+        echo "  test                - Run syntax and integration tests"
+        echo "  status              - Check status of test infrastructure"
+        echo "  logs                - View Cosmos DB metrics"
+        echo "  cleanup             - Delete all test infrastructure"
+        echo "  check-prerequisites - Check if prerequisites are installed"
+        echo "  install-python-deps - Install required Python packages (auto-run by setup)"
+        echo "  register-provider   - Register Microsoft.DocumentDB provider (auto-run by setup)"
         echo ""
         echo "Typical workflow:"
         echo "  1. task check-prerequisites  # Verify setup"

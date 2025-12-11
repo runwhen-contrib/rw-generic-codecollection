@@ -28,7 +28,7 @@ ${TASK_TITLE}
 
 *** Keywords ***
 Suite Initialization
-    ${cosmosdb_endpoint}=    RW.Core.Import Secret
+    ${cosmosdb_endpoint}=    RW.Core.Import User Variable
     ...    cosmosdb_endpoint
     ...    type=string
     ...    description=The Cosmos DB account endpoint URL (e.g., https://myaccount.documents.azure.com:443/)

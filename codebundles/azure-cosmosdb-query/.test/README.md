@@ -24,7 +24,11 @@ This directory contains test infrastructure for the `azure-cosmosdb-query` gener
 
 3. **Python packages**:
    ```bash
-   pip install azure-cosmos
+   pip3 install azure-cosmos
+   
+   # Or let the Taskfile install it automatically
+   cd codebundles/azure-cosmosdb-query/.test
+   task install-python-deps
    ```
 
 
@@ -45,6 +49,8 @@ This verifies:
 ### 1. Set Up Test Infrastructure
 
 This creates:
+- Installs required Python packages (if needed)
+- Registers Azure provider (if needed)
 - Azure Resource Group
 - Cosmos DB Account
 - Database and Container
@@ -56,7 +62,11 @@ task setup
 
 **Note**: This takes approximately 5-10 minutes as Cosmos DB provisioning takes time.
 
-**First time?** The setup automatically registers the Microsoft.DocumentDB provider if needed (adds 1-2 minutes).
+**What happens automatically:**
+- Python dependencies are installed (azure-cosmos package)
+- Microsoft.DocumentDB provider is registered (first time only, adds 1-2 minutes)
+- All Azure resources are created
+- Test data is populated
 
 ### 2. Run Tests
 
