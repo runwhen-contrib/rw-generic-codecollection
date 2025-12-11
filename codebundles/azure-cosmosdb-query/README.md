@@ -19,7 +19,7 @@ SELECT COUNT(1) FROM c WHERE c.status = 'error'
 
 ## Requirements
 - **COSMOSDB_ENDPOINT** (user variable): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
-- **cosmosdb_key** (secret): The Cosmos DB account key
+- **azure_credentials** (secret): Service principal credentials with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
 - **COSMOSDB_QUERY** (user variable): The SQL query to execute

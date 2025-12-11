@@ -77,5 +77,5 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Query Cosmos DB for error documents"
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.value}
+    RW.Azure.Cosmosdb.Connect To Cosmosdb With Azure Credentials    ${COSMOSDB_ENDPOINT}
 

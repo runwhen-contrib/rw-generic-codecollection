@@ -5,8 +5,10 @@ This library provides keywords for executing SQL queries against Azure Cosmos DB
 """
 
 from azure.cosmos import CosmosClient, exceptions
+from azure.identity import DefaultAzureCredential
 from typing import Optional
 import json
+import os
 
 
 class Cosmosdb:
@@ -14,6 +16,7 @@ class Cosmosdb:
     Library for querying Azure Cosmos DB.
     
     Provides keywords for executing user-provided SQL queries against Cosmos DB containers.
+    Supports both key-based authentication and Azure AD authentication (service principals).
     """
 
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
@@ -22,15 +25,14 @@ class Cosmosdb:
     def __init__(self):
         self.client: Optional[CosmosClient] = None
         self.endpoint: Optional[str] = None
-        self.key: Optional[str] = None
 
-    def connect_to_cosmosdb(self, endpoint: str, key: str) -> str:
+    def connect_to_cosmosdb(self, endpoint: str, key: Optional[str] = None) -> str:
         """
-        Connect to an Azure Cosmos DB account.
+        Connect to an Azure Cosmos DB account using key-based authentication.
         
         Args:
             endpoint: The Cosmos DB account endpoint URL
-            key: The Cosmos DB account key
+            key: The Cosmos DB account key (optional if using Azure AD)
             
         Returns:
             Success message
@@ -40,11 +42,42 @@ class Cosmosdb:
         """
         try:
             self.endpoint = endpoint
-            self.key = key
-            self.client = CosmosClient(self.endpoint, self.key)
-            return f"Successfully connected to Cosmos DB account at {endpoint}"
+            if key and key.strip():
+                # Key-based authentication
+                self.client = CosmosClient(self.endpoint, key)
+                return f"Successfully connected to Cosmos DB account at {endpoint} using key authentication"
+            else:
+                # Azure AD authentication (service principal, managed identity, etc.)
+                credential = DefaultAzureCredential()
+                self.client = CosmosClient(self.endpoint, credential)
+                return f"Successfully connected to Cosmos DB account at {endpoint} using Azure AD authentication"
         except Exception as e:
             raise Exception(f"Failed to connect to Cosmos DB: {str(e)}")
+
+    def connect_to_cosmosdb_with_azure_credentials(self, endpoint: str) -> str:
+        """
+        Connect to an Azure Cosmos DB account using Azure AD authentication.
+        Uses DefaultAzureCredential which supports service principals, managed identities, and Azure CLI credentials.
+        
+        Requires azure_credentials secret with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+        to be set as environment variables.
+        
+        Args:
+            endpoint: The Cosmos DB account endpoint URL
+            
+        Returns:
+            Success message
+            
+        Example:
+            | Connect To Cosmosdb With Azure Credentials | https://myaccount.documents.azure.com:443/ |
+        """
+        try:
+            self.endpoint = endpoint
+            credential = DefaultAzureCredential()
+            self.client = CosmosClient(self.endpoint, credential)
+            return f"Successfully connected to Cosmos DB account at {endpoint} using Azure AD authentication"
+        except Exception as e:
+            raise Exception(f"Failed to connect to Cosmos DB with Azure credentials: {str(e)}")
 
     def query_container(
         self, database_name: str, container_name: str, query: str, parameters: Optional[str] = None

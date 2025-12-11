@@ -33,10 +33,10 @@ Suite Initialization
     ...    description=The Cosmos DB account endpoint URL (e.g., https://myaccount.documents.azure.com:443/)
     ...    pattern=\w*
     ...    example=https://myaccount.documents.azure.com:443/
-    ${cosmosdb_key}=    RW.Core.Import Secret
-    ...    cosmosdb_key
+    ${azure_credentials}=    RW.Core.Import Secret
+    ...    azure_credentials
     ...    type=string
-    ...    description=The Cosmos DB account key
+    ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET for service principal authentication
     ...    pattern=\w*
     ${DATABASE_NAME}=    RW.Core.Import User Variable    DATABASE_NAME
     ...    type=string
@@ -65,5 +65,5 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Count error documents in Cosmos DB"
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.value}
+    RW.Azure.Cosmosdb.Connect To Cosmosdb With Azure Credentials    ${COSMOSDB_ENDPOINT}
 
