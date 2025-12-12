@@ -24,11 +24,8 @@ ${TASK_TITLE}
         ...    ${CONTAINER_NAME}
         ...    ${COSMOSDB_QUERY}
         ...    ${QUERY_PARAMETERS}
-        ${count}=    RW.Azure.Cosmosdb.Count Query Results
-        ...    ${DATABASE_NAME}
-        ...    ${CONTAINER_NAME}
-        ...    ${COSMOSDB_QUERY}
-        ...    ${QUERY_PARAMETERS}
+        ${results_list}=    Evaluate    json.loads($results)    json
+        ${count}=    Evaluate    len($results_list)
         
         # Determine if issue should be raised based on condition
         ${should_raise_issue}=    Set Variable    ${False}
