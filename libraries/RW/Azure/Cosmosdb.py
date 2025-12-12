@@ -205,8 +205,12 @@ class Cosmosdb:
                 enable_cross_partition_query=True
             ))
             
-            # If query contains COUNT, extract the count value
-            if "COUNT" in query.upper():
+            # Check if query is a COUNT aggregate query using regex to avoid substring matches
+            # Matches COUNT( or COUNT ( with optional whitespace, case-insensitive
+            count_pattern = re.compile(r'\bCOUNT\s*\(', re.IGNORECASE)
+            is_count_query = bool(count_pattern.search(query))
+            
+            if is_count_query:
                 if items and len(items) > 0:
                     first_item = items[0]
                     # Handle SELECT VALUE COUNT(1) which returns just a number
@@ -222,11 +226,21 @@ class Cosmosdb:
                         elif "Count" in first_item:
                             return int(first_item["Count"])
                         else:
-                            # Return first value from the first key
-                            return int(list(first_item.values())[0])
+                            # Try to extract numeric value from first field
+                            first_value = list(first_item.values())[0]
+                            if isinstance(first_value, (int, float)):
+                                return int(first_value)
+                            else:
+                                # If first value is not numeric, this might not be a COUNT query result
+                                # Fall back to counting items instead
+                                return len(items)
                     else:
-                        # Fallback for unexpected types
-                        return int(first_item)
+                        # Fallback for unexpected types - try to convert to int
+                        try:
+                            return int(first_item)
+                        except (ValueError, TypeError):
+                            # If conversion fails, fall back to counting items
+                            return len(items)
                 return 0
             else:
                 # Just return the number of items returned
