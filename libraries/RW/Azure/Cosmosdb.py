@@ -209,16 +209,24 @@ class Cosmosdb:
             if "COUNT" in query.upper():
                 if items and len(items) > 0:
                     first_item = items[0]
-                    # Try different count field names
-                    if "$1" in first_item:
-                        return int(first_item["$1"])
-                    elif "count" in first_item:
-                        return int(first_item["count"])
-                    elif "Count" in first_item:
-                        return int(first_item["Count"])
+                    # Handle SELECT VALUE COUNT(1) which returns just a number
+                    if isinstance(first_item, (int, float)):
+                        return int(first_item)
+                    # Handle SELECT COUNT(1) which returns an object
+                    elif isinstance(first_item, dict):
+                        # Try different count field names
+                        if "$1" in first_item:
+                            return int(first_item["$1"])
+                        elif "count" in first_item:
+                            return int(first_item["count"])
+                        elif "Count" in first_item:
+                            return int(first_item["Count"])
+                        else:
+                            # Return first value from the first key
+                            return int(list(first_item.values())[0])
                     else:
-                        # Return first value from the first key
-                        return int(list(first_item.values())[0])
+                        # Fallback for unexpected types
+                        return int(first_item)
                 return 0
             else:
                 # Just return the number of items returned

@@ -14,13 +14,15 @@ Executes a user-provided Cosmos DB SQL query and pushes a health metric: 1 (heal
   - **cosmosdb_key** (fallback): The Cosmos DB account primary or secondary key
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
-- **COSMOSDB_QUERY** (user variable): The SQL query to execute (should filter for errors/problems)
+- **COSMOSDB_QUERY** (user variable): The SQL query to execute
 - **QUERY_PARAMETERS** (user variable, optional): JSON string of query parameters
 - **TASK_TITLE** (user variable, optional): Custom name for the task
 - **ISSUE_TITLE** (user variable, optional): Title for the issue if raised
 - **ISSUE_SEVERITY** (user variable, optional): Severity level 1-4 (default: 3)
 - **ISSUE_NEXT_STEPS** (user variable, optional): Next steps guidance
 - **ISSUE_DETAILS** (user variable, optional): Issue details
+- **ISSUE_ON** (user variable, optional): When to raise issue - see conditions below (default: "results_found")
+- **ISSUE_THRESHOLD** (user variable, optional): Numeric threshold for count_above/count_below (default: 0)
 
 ## Authentication
 This codebundle supports two authentication methods with automatic fallback:
@@ -46,52 +48,111 @@ az cosmosdb sql role assignment create \
 
 **Note:** These are **data plane** roles for accessing Cosmos DB data, not the Azure ARM control plane roles you see in the Azure Portal (like "Cosmos DB Account Reader" or "Cosmos DB Operator"). Data plane roles are managed separately via the Azure CLI.
 
-## Usage Philosophy
-This codebundle is designed for **error detection**:
-- Your query should filter for **problematic conditions only**
-- **No results** = healthy state (SLI pushes 1)
-- **Results found** = unhealthy state (SLI pushes 0, TaskSet raises issue)
+## Issue Conditions
+
+This codebundle supports **flexible issue detection** using the `ISSUE_ON` parameter:
+
+### `results_found` (default)
+Raise issue when query returns any results.
+- **Use case:** Error detection - looking for problems
+- **Healthy:** No results (SLI = 1)
+- **Unhealthy:** Results found (SLI = 0, issue raised)
+
+### `no_results`
+Raise issue when query returns NO results.
+- **Use case:** Validation - expecting data to exist
+- **Healthy:** Results found (SLI = 1)
+- **Unhealthy:** No results (SLI = 0, issue raised)
+
+### `count_above`
+Raise issue when result count exceeds a threshold.
+- **Use case:** Volume monitoring - too many items
+- **Requires:** `ISSUE_THRESHOLD` (e.g., 100)
+- **Healthy:** Count ≤ threshold (SLI = 1)
+- **Unhealthy:** Count > threshold (SLI = 0, issue raised)
+
+### `count_below`
+Raise issue when result count is below a threshold.
+- **Use case:** Minimum requirements - too few items
+- **Requires:** `ISSUE_THRESHOLD` (e.g., 10)
+- **Healthy:** Count ≥ threshold (SLI = 1)
+- **Unhealthy:** Count < threshold (SLI = 0, issue raised)
 
 ## Usage Examples
 
-### TaskSet: Detect Error Documents
-```
+### Example 1: Detect Error Documents (results_found - default)
+```bash
 DATABASE_NAME="mydatabase"
 CONTAINER_NAME="mycontainer"
 COSMOSDB_QUERY="SELECT * FROM c WHERE c.status = 'error' ORDER BY c._ts DESC"
-TASK_TITLE="Detect error documents in Cosmos DB"
+ISSUE_ON="results_found"  # Default - can be omitted
+TASK_TITLE="Detect error documents"
 ISSUE_TITLE="Found error documents in Cosmos DB"
 ISSUE_SEVERITY=2
-ISSUE_NEXT_STEPS="Review the error documents and investigate the root cause."
 ```
+**Behavior:** Issue raised if ANY errors are found
 
-### TaskSet: Detect Failed Transactions
+---
+
+### Example 2: Validate Expected Data Exists (no_results)
+```bash
+DATABASE_NAME="inventory"
+CONTAINER_NAME="products"
+COSMOSDB_QUERY="SELECT * FROM c WHERE c.category = 'featured' AND c.inStock = true"
+ISSUE_ON="no_results"
+TASK_TITLE="Validate featured products exist"
+ISSUE_TITLE="No featured products in stock"
+ISSUE_SEVERITY=2
+ISSUE_NEXT_STEPS="Add featured products to inventory"
 ```
+**Behavior:** Issue raised if NO featured products found (expecting data to exist)
+
+---
+
+### Example 3: Monitor High Volume (count_above)
+```bash
+DATABASE_NAME="logs"
+CONTAINER_NAME="events"
+COSMOSDB_QUERY="SELECT VALUE COUNT(1) FROM c WHERE c.severity = 'error' AND c._ts > GetCurrentTimestamp() - 3600000"
+ISSUE_ON="count_above"
+ISSUE_THRESHOLD=100
+TASK_TITLE="Monitor error volume"
+ISSUE_TITLE="High error rate detected"
+ISSUE_SEVERITY=1
+ISSUE_DETAILS="Error count exceeded threshold in the last hour"
+```
+**Behavior:** Issue raised if more than 100 errors in last hour
+
+---
+
+### Example 4: Monitor Minimum Capacity (count_below)
+```bash
+DATABASE_NAME="inventory"
+CONTAINER_NAME="products"
+COSMOSDB_QUERY="SELECT VALUE COUNT(1) FROM c WHERE c.inStock = true"
+ISSUE_ON="count_below"
+ISSUE_THRESHOLD=10
+TASK_TITLE="Monitor minimum inventory"
+ISSUE_TITLE="Low inventory alert"
+ISSUE_SEVERITY=3
+ISSUE_NEXT_STEPS="Reorder products to maintain minimum stock levels"
+```
+**Behavior:** Issue raised if fewer than 10 items in stock
+
+---
+
+### Example 5: Parameterized High-Value Errors
+```bash
 DATABASE_NAME="transactions"
 CONTAINER_NAME="orders"
-COSMOSDB_QUERY="SELECT c.id, c.customerId, c.errorMessage FROM c WHERE c.failed = true AND c._ts > @startTime"
-QUERY_PARAMETERS='{"@startTime": 1704067200}'
-TASK_TITLE="Detect failed transactions in last hour"
-ISSUE_TITLE="Found failed transactions"
+COSMOSDB_QUERY="SELECT * FROM c WHERE c.status = @status AND c.amount > @threshold"
+QUERY_PARAMETERS='{"@status": "failed", "@threshold": 1000}'
+ISSUE_ON="results_found"
+TASK_TITLE="Detect high-value failed transactions"
+ISSUE_TITLE="High-value transaction failures detected"
 ISSUE_SEVERITY=1
 ```
-
-### SLI: Monitor for Errors
-```
-DATABASE_NAME="mydatabase"
-CONTAINER_NAME="mycontainer"
-COSMOSDB_QUERY="SELECT * FROM c WHERE c.status = 'error'"
-TASK_TITLE="Monitor for error documents"
-```
-
-### SLI: Monitor Stale Records
-```
-DATABASE_NAME="mydatabase"
-CONTAINER_NAME="mycontainer"
-COSMOSDB_QUERY="SELECT * FROM c WHERE c.lastUpdated < @threshold"
-QUERY_PARAMETERS='{"@threshold": "2024-01-01T00:00:00Z"}'
-TASK_TITLE="Monitor for stale records"
-```
+**Behavior:** Issue raised if any high-value failures found
 
 ## Query Guidelines
 

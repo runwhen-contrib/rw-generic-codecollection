@@ -23,7 +23,25 @@ ${TASK_TITLE}
     ...    ${COSMOSDB_QUERY}
     ...    ${QUERY_PARAMETERS}
     
-    IF    ${count} > 0
+    # Determine health based on condition
+    ${is_unhealthy}=    Set Variable    ${False}
+    
+    IF    "${ISSUE_ON}" == "results_found"
+        ${is_unhealthy}=    Evaluate    ${count} > 0
+    ELSE IF    "${ISSUE_ON}" == "no_results"
+        ${is_unhealthy}=    Evaluate    ${count} == 0
+    ELSE IF    "${ISSUE_ON}" == "count_above"
+        ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+        ${is_unhealthy}=    Evaluate    ${count} > ${threshold}
+    ELSE IF    "${ISSUE_ON}" == "count_below"
+        ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+        ${is_unhealthy}=    Evaluate    ${count} < ${threshold}
+    ELSE
+        Log    Invalid ISSUE_ON value: ${ISSUE_ON}. Using default "results_found".    WARN
+        ${is_unhealthy}=    Evaluate    ${count} > 0
+    END
+    
+    IF    ${is_unhealthy}
         RW.Core.Push Metric    0
     ELSE
         RW.Core.Push Metric    1
@@ -64,6 +82,18 @@ Suite Initialization
     ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants.
     ...    pattern=\w*
     ...    example="Monitor Cosmos DB for error documents"
+    ${ISSUE_ON}=    RW.Core.Import User Variable    ISSUE_ON
+    ...    type=string
+    ...    description=When to push 0 (unhealthy): "results_found" (default), "no_results", "count_above", "count_below"
+    ...    pattern=\w*
+    ...    example=results_found
+    ...    default=results_found
+    ${ISSUE_THRESHOLD}=    RW.Core.Import User Variable    ISSUE_THRESHOLD
+    ...    type=string
+    ...    description=Numeric threshold for "count_above" or "count_below" conditions (ignored for other conditions)
+    ...    pattern=\w*
+    ...    example=100
+    ...    default=0
     
     # Try Azure AD authentication first (service principal - recommended), fall back to key-based auth
     ${auth_method}=    Set Variable    none

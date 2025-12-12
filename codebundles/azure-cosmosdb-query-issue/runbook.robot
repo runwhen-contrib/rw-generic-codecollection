@@ -30,20 +30,50 @@ ${TASK_TITLE}
         ...    ${COSMOSDB_QUERY}
         ...    ${QUERY_PARAMETERS}
         
-        IF    ${count} > 0
+        # Determine if issue should be raised based on condition
+        ${should_raise_issue}=    Set Variable    ${False}
+        ${expected_msg}=    Set Variable    ${EMPTY}
+        ${actual_msg}=    Set Variable    ${EMPTY}
+        
+        IF    "${ISSUE_ON}" == "results_found"
+            ${should_raise_issue}=    Evaluate    ${count} > 0
+            ${expected_msg}=    Set Variable    The query should return no results
+            ${actual_msg}=    Set Variable    Query returned ${count} results
+        ELSE IF    "${ISSUE_ON}" == "no_results"
+            ${should_raise_issue}=    Evaluate    ${count} == 0
+            ${expected_msg}=    Set Variable    The query should return results
+            ${actual_msg}=    Set Variable    Query returned no results
+        ELSE IF    "${ISSUE_ON}" == "count_above"
+            ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+            ${should_raise_issue}=    Evaluate    ${count} > ${threshold}
+            ${expected_msg}=    Set Variable    The query should return ${threshold} or fewer results
+            ${actual_msg}=    Set Variable    Query returned ${count} results (above threshold of ${threshold})
+        ELSE IF    "${ISSUE_ON}" == "count_below"
+            ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+            ${should_raise_issue}=    Evaluate    ${count} < ${threshold}
+            ${expected_msg}=    Set Variable    The query should return ${threshold} or more results
+            ${actual_msg}=    Set Variable    Query returned ${count} results (below threshold of ${threshold})
+        ELSE
+            Log    Invalid ISSUE_ON value: ${ISSUE_ON}. Using default "results_found".    WARN
+            ${should_raise_issue}=    Evaluate    ${count} > 0
+            ${expected_msg}=    Set Variable    The query should return no results
+            ${actual_msg}=    Set Variable    Query returned ${count} results
+        END
+        
+        IF    ${should_raise_issue}
             RW.Core.Add Issue
             ...    title=${ISSUE_TITLE}
             ...    severity=${ISSUE_SEVERITY}
-            ...    expected=The query should return no results, indicating no errors were found.
-            ...    actual=Query returned ${count} results, indicating errors were found.
+            ...    expected=${expected_msg}
+            ...    actual=${actual_msg}
             ...    reproduce_hint=Query Cosmos DB with: ${COSMOSDB_QUERY}
             ...    next_steps=${ISSUE_NEXT_STEPS}
-            ...    details=${ISSUE_DETAILS}\n\nQuery Results:\n${results}
+            ...    details=${ISSUE_DETAILS}\n\nQuery Results (${count} documents):\n${results}
             RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
-            RW.Core.Add Pre To Report    Found ${count} results:\n${results}
+            RW.Core.Add Pre To Report    Issue raised: ${actual_msg}\n\nResults:\n${results}
         ELSE
             RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
-            RW.Core.Add Pre To Report    No results returned - no errors found.
+            RW.Core.Add Pre To Report    No issue detected. Query returned ${count} results (condition: ${ISSUE_ON})
         END
     EXCEPT    AS    ${error_message}
         RW.Core.Add Issue
