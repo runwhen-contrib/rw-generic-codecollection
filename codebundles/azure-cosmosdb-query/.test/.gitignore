@@ -1,0 +1,12 @@
+# Ignore generated files
+cosmosdb_account_name.txt
+*.log
+*.html
+*.xml
+output/
+results/
+
+# Ignore credentials
+*.env
+!example_test_config.env
+
