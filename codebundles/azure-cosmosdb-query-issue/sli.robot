@@ -17,34 +17,47 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Executes a user-provided Cosmos DB SQL query and pushes 0 if results are found (unhealthy), 1 if no results (healthy).
     [Tags]    azure    cosmosdb    query    generic    sli
-    ${count}=    RW.Azure.Cosmosdb.Count Query Results
-    ...    ${DATABASE_NAME}
-    ...    ${CONTAINER_NAME}
-    ...    ${COSMOSDB_QUERY}
-    ...    ${QUERY_PARAMETERS}
-    
-    # Determine health based on condition
-    ${is_unhealthy}=    Set Variable    ${False}
-    
-    IF    "${ISSUE_ON}" == "results_found"
-        ${is_unhealthy}=    Evaluate    ${count} > 0
-    ELSE IF    "${ISSUE_ON}" == "no_results"
-        ${is_unhealthy}=    Evaluate    ${count} == 0
-    ELSE IF    "${ISSUE_ON}" == "count_above"
-        ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
-        ${is_unhealthy}=    Evaluate    ${count} > ${threshold}
-    ELSE IF    "${ISSUE_ON}" == "count_below"
-        ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
-        ${is_unhealthy}=    Evaluate    ${count} < ${threshold}
-    ELSE
-        Log    Invalid ISSUE_ON value: ${ISSUE_ON}. Using default "results_found".    WARN
-        ${is_unhealthy}=    Evaluate    ${count} > 0
-    END
-    
-    IF    ${is_unhealthy}
-        RW.Core.Push Metric    0
-    ELSE
-        RW.Core.Push Metric    1
+    TRY
+        ${results}=    RW.Azure.Cosmosdb.Query Container
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        ${count}=    RW.Azure.Cosmosdb.Count Query Results
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        
+        # Determine health based on condition
+        ${is_unhealthy}=    Set Variable    ${False}
+        
+        IF    "${ISSUE_ON}" == "results_found"
+            ${is_unhealthy}=    Evaluate    ${count} > 0
+        ELSE IF    "${ISSUE_ON}" == "no_results"
+            ${is_unhealthy}=    Evaluate    ${count} == 0
+        ELSE IF    "${ISSUE_ON}" == "count_above"
+            ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+            ${is_unhealthy}=    Evaluate    ${count} > ${threshold}
+        ELSE IF    "${ISSUE_ON}" == "count_below"
+            ${threshold}=    Convert To Integer    ${ISSUE_THRESHOLD}
+            ${is_unhealthy}=    Evaluate    ${count} < ${threshold}
+        ELSE
+            Log    Invalid ISSUE_ON value: ${ISSUE_ON}. Using default "results_found".    WARN
+            ${is_unhealthy}=    Evaluate    ${count} > 0
+        END
+        
+        RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
+        RW.Core.Add Pre To Report    Count: ${count}
+        RW.Core.Add Pre To Report    Results:\n${results}
+        IF    ${is_unhealthy}
+            RW.Core.Push Metric    0
+        ELSE
+            RW.Core.Push Metric    1
+        END
+    EXCEPT    AS    ${error_message}
+        RW.Core.Add Pre To Report    Error executing query: ${error_message}
+        Fail    Failed to execute Cosmos DB query: ${error_message}
     END
 
 

@@ -17,12 +17,25 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Executes a user-provided Cosmos DB SQL query and pushes the count of results as a metric.
     [Tags]    azure    cosmosdb    query    generic    sli
-    ${count}=    RW.Azure.Cosmosdb.Count Query Results
-    ...    ${DATABASE_NAME}
-    ...    ${CONTAINER_NAME}
-    ...    ${COSMOSDB_QUERY}
-    ...    ${QUERY_PARAMETERS}
-    RW.Core.Push Metric    ${count}
+    TRY
+        ${results}=    RW.Azure.Cosmosdb.Query Container
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        ${count}=    RW.Azure.Cosmosdb.Count Query Results
+        ...    ${DATABASE_NAME}
+        ...    ${CONTAINER_NAME}
+        ...    ${COSMOSDB_QUERY}
+        ...    ${QUERY_PARAMETERS}
+        RW.Core.Add Pre To Report    Query: ${COSMOSDB_QUERY}
+        RW.Core.Add Pre To Report    Count: ${count}
+        RW.Core.Add Pre To Report    Results:\n${results}
+        RW.Core.Push Metric    ${count}
+    EXCEPT    AS    ${error_message}
+        RW.Core.Add Pre To Report    Error executing query: ${error_message}
+        Fail    Failed to execute Cosmos DB query: ${error_message}
+    END
 
 
 *** Keywords ***
