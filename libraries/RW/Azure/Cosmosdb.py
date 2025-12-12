@@ -6,9 +6,11 @@ This library provides keywords for executing SQL queries against Azure Cosmos DB
 
 from azure.cosmos import CosmosClient, exceptions
 from azure.identity import DefaultAzureCredential
+from azure.mgmt.cosmosdb import CosmosDBManagementClient
 from typing import Optional
 import json
 import os
+import re
 
 
 class Cosmosdb:
@@ -78,6 +80,47 @@ class Cosmosdb:
             return f"Successfully connected to Cosmos DB account at {endpoint} using Azure AD authentication"
         except Exception as e:
             raise Exception(f"Failed to connect to Cosmos DB with Azure credentials: {str(e)}")
+    
+    def connect_to_cosmosdb_with_azure_credentials_and_retrieve_key(
+        self, endpoint: str, subscription_id: str, resource_group: str, account_name: str
+    ) -> str:
+        """
+        Connect to Cosmos DB by using service principal to retrieve the account key from Azure,
+        then connecting with that key. This is useful when the service principal doesn't have
+        data plane RBAC permissions but has control plane access to list keys.
+        
+        Requires:
+        - azure_credentials secret with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+        - Service principal with Microsoft.DocumentDB/databaseAccounts/listKeys/action permission
+          (e.g., "Cosmos DB Account Reader" or "Contributor" role)
+        
+        Args:
+            endpoint: The Cosmos DB account endpoint URL
+            subscription_id: Azure subscription ID
+            resource_group: Resource group name
+            account_name: Cosmos DB account name
+            
+        Returns:
+            Success message
+            
+        Example:
+            | Connect To Cosmosdb With Azure Credentials And Retrieve Key | 
+            | ... | https://myaccount.documents.azure.com:443/ |
+            | ... | sub-id | my-rg | my-cosmosdb-account |
+        """
+        try:
+            self.endpoint = endpoint
+            credential = DefaultAzureCredential()
+            
+            # Use Azure Management API to retrieve the key
+            cosmos_mgmt_client = CosmosDBManagementClient(credential, subscription_id)
+            keys = cosmos_mgmt_client.database_accounts.list_keys(resource_group, account_name)
+            
+            # Connect using the retrieved key
+            self.client = CosmosClient(self.endpoint, keys.primary_master_key)
+            return f"Successfully connected to Cosmos DB account at {endpoint} using key retrieved via Azure AD (control plane)"
+        except Exception as e:
+            raise Exception(f"Failed to retrieve Cosmos DB key using Azure credentials: {str(e)}")
 
     def query_container(
         self, database_name: str, container_name: str, query: str, parameters: Optional[str] = None

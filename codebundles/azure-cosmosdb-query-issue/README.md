@@ -9,7 +9,9 @@ Executes a user-provided Cosmos DB SQL query and pushes a health metric: 1 (heal
 
 ## Requirements
 - **COSMOSDB_ENDPOINT** (user variable): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
-- **azure_credentials** (secret): Service principal credentials with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+- **Authentication** (secret, one of):
+  - **azure_credentials** (recommended): Service principal credentials with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+  - **cosmosdb_key** (fallback): The Cosmos DB account primary or secondary key
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
 - **COSMOSDB_QUERY** (user variable): The SQL query to execute (should filter for errors/problems)
@@ -19,6 +21,30 @@ Executes a user-provided Cosmos DB SQL query and pushes a health metric: 1 (heal
 - **ISSUE_SEVERITY** (user variable, optional): Severity level 1-4 (default: 3)
 - **ISSUE_NEXT_STEPS** (user variable, optional): Next steps guidance
 - **ISSUE_DETAILS** (user variable, optional): Issue details
+
+## Authentication
+This codebundle supports two authentication methods with automatic fallback:
+1. **Azure AD / Service Principal** (recommended) - Uses `azure_credentials` secret
+2. **Key-based authentication** (fallback) - Uses `cosmosdb_key` secret
+
+The codebundle will automatically try service principal authentication first, and if that's not available, it will fall back to key-based authentication. You only need to configure one method.
+
+### Service Principal Setup (Azure AD Authentication)
+For service principal authentication, you need **Cosmos DB Data Plane RBAC** permissions (not Azure ARM control plane roles):
+
+**Required Role:** `Cosmos DB Built-in Data Reader` (Role ID: `00000000-0000-0000-0000-000000000001`)
+
+```bash
+# Grant data plane RBAC permissions
+az cosmosdb sql role assignment create \
+  --account-name <cosmos-account-name> \
+  --resource-group <resource-group> \
+  --scope "/" \
+  --principal-id <service-principal-object-id> \
+  --role-definition-id 00000000-0000-0000-0000-000000000001
+```
+
+**Note:** These are **data plane** roles for accessing Cosmos DB data, not the Azure ARM control plane roles you see in the Azure Portal (like "Cosmos DB Account Reader" or "Cosmos DB Operator"). Data plane roles are managed separately via the Azure CLI.
 
 ## Usage Philosophy
 This codebundle is designed for **error detection**:

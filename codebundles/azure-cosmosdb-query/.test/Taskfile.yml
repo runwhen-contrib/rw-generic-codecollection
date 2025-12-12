@@ -20,6 +20,7 @@ tasks:
       - task: register-provider
       - task: create-resource-group
       - task: create-cosmosdb-account
+      - task: grant-rbac-permissions
       - task: create-database
       - task: create-container
       - task: populate-test-data
@@ -90,6 +91,91 @@ tasks:
         echo "{{.COSMOSDB_ACCOUNT}}" > cosmosdb_account_name.txt
     silent: false
 
+  grant-rbac-permissions:
+    desc: "Grant RBAC permissions to service principal (if using Azure AD auth)"
+    cmds:
+      - |
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
+        echo "Configuring RBAC permissions for service principal..."
+        echo ""
+        
+        # Load environment from tf.secret if it exists
+        if [ -f tf.secret ]; then
+          source tf.secret
+        fi
+        
+        # Check if AZURE_CLIENT_ID is set (from tf.secret or environment)
+        if [ -z "$AZURE_CLIENT_ID" ]; then
+          echo "⚠️  AZURE_CLIENT_ID not set. Skipping RBAC setup."
+          echo ""
+          echo "To use service principal authentication:"
+          echo "  1. Ensure tf.secret contains your service principal credentials"
+          echo "  2. Run: task grant-service-principal-rbac"
+          echo "    (or source .test/tf.secret first if running setup separately)"
+          echo ""
+          echo "Alternatively, key-based authentication will be used (no RBAC needed)."
+          exit 0
+        fi
+        
+        echo "✅ Service Principal Client ID: $AZURE_CLIENT_ID"
+        
+        # Get the service principal object ID
+        echo "Looking up service principal object ID..."
+        SP_OBJECT_ID=$(az ad sp show --id $AZURE_CLIENT_ID --query id -o tsv 2>/dev/null)
+        
+        if [ -z "$SP_OBJECT_ID" ]; then
+          echo "❌ Could not find service principal with client ID: $AZURE_CLIENT_ID"
+          echo ""
+          echo "Please verify:"
+          echo "  1. You are logged into the correct Azure tenant"
+          if [ ! -z "$AZURE_TENANT_ID" ]; then
+            echo "     Your tenant ID: $AZURE_TENANT_ID"
+            echo "     Run: az login --tenant $AZURE_TENANT_ID"
+          else
+            echo "     Run: az login --tenant <tenant-id>"
+          fi
+          echo "  2. The service principal exists: az ad sp show --id $AZURE_CLIENT_ID"
+          exit 1
+        fi
+        
+        echo "✅ Service Principal Object ID: $SP_OBJECT_ID"
+        echo ""
+        
+        # Grant Cosmos DB Built-in Data Reader role
+        # Role Definition ID: 00000000-0000-0000-0000-000000000001 (Data Reader)
+        echo "Granting Cosmos DB Built-in Data Reader role to service principal..."
+        
+        ASSIGNMENT_RESULT=$(az cosmosdb sql role assignment create \
+          --account-name $ACCOUNT_NAME \
+          --resource-group {{.RESOURCE_GROUP}} \
+          --scope "/" \
+          --principal-id $SP_OBJECT_ID \
+          --role-definition-id 00000000-0000-0000-0000-000000000001 \
+          2>&1)
+        
+        if echo "$ASSIGNMENT_RESULT" | grep -q "already exists\|Conflict"; then
+          echo "✅ Role assignment already exists (this is OK)"
+        elif echo "$ASSIGNMENT_RESULT" | grep -q "error\|Error\|ERROR"; then
+          echo "⚠️  Role assignment may have failed, but continuing..."
+          echo "$ASSIGNMENT_RESULT"
+        else
+          echo "✅ Role assignment created successfully"
+        fi
+        
+        echo ""
+        echo "========================================="
+        echo "RBAC Configuration Complete!"
+        echo "========================================="
+        echo ""
+        echo "Service Principal: $AZURE_CLIENT_ID"
+        echo "Cosmos DB Account: $ACCOUNT_NAME"
+        echo "Role: Cosmos DB Built-in Data Reader"
+        echo "Scope: / (entire account)"
+        echo ""
+        echo "⏱️  Note: Role assignments may take 1-2 minutes to propagate."
+        echo "If you get authentication errors immediately, wait and retry."
+    silent: false
+
   create-database:
     desc: "Create Cosmos DB database"
     cmds:
@@ -145,20 +231,45 @@ tasks:
         echo "Container: {{.CONTAINER_NAME}}"
         echo ""
         echo "Endpoint:"
-        az cosmosdb show \
+        ENDPOINT=$(az cosmosdb show \
           --name $ACCOUNT_NAME \
           --resource-group {{.RESOURCE_GROUP}} \
-          --query documentEndpoint -o tsv
+          --query documentEndpoint -o tsv)
+        echo "$ENDPOINT"
         echo ""
         echo "Primary Key (use as cosmosdb_key secret):"
-        az cosmosdb keys list \
+        PRIMARY_KEY=$(az cosmosdb keys list \
           --name $ACCOUNT_NAME \
           --resource-group {{.RESOURCE_GROUP}} \
-          --query primaryMasterKey -o tsv
+          --query primaryMasterKey -o tsv)
+        echo "$PRIMARY_KEY"
         echo ""
-        echo "Set these as environment variables or secrets:"
-        echo "  cosmosdb_endpoint=https://$ACCOUNT_NAME.documents.azure.com:443/"
-        echo "  cosmosdb_key=<primary key from above>"
+        echo "========================================="
+        echo "Authentication Options:"
+        echo "========================================="
+        echo ""
+        echo "Option 1: Key-based authentication"
+        echo "  Set these as environment variables or secrets:"
+        echo "    COSMOSDB_ENDPOINT=$ENDPOINT"
+        echo "    cosmosdb_key=$PRIMARY_KEY"
+        echo ""
+        echo "Option 2: Service Principal authentication (recommended)"
+        if [ ! -z "$AZ_CLIENT_ID" ]; then
+          echo "  Service Principal configured in tf.secret:"
+          echo "    AZURE_CLIENT_ID=$AZ_CLIENT_ID"
+          echo "    AZURE_TENANT_ID=$AZ_TENANT_ID"
+          echo "    AZURE_CLIENT_SECRET=$AZ_CLIENT_SECRET"
+          echo ""
+          echo "  Use these as azure_credentials secret:"
+          echo "    COSMOSDB_ENDPOINT=$ENDPOINT"
+          echo "    AZURE_CLIENT_ID=$AZ_CLIENT_ID"
+          echo "    AZURE_TENANT_ID=$AZ_TENANT_ID"
+          echo "    AZURE_CLIENT_SECRET=$AZ_CLIENT_SECRET"
+        else
+          echo "  (Service principal not configured in tf.secret)"
+        fi
+        echo ""
+        echo "Common variables:"
         echo "  DATABASE_NAME={{.DATABASE_NAME}}"
         echo "  CONTAINER_NAME={{.CONTAINER_NAME}}"
         echo ""
@@ -330,6 +441,50 @@ tasks:
         exit $EXIT_CODE
     silent: false
 
+  grant-service-principal-rbac:
+    desc: "Grant RBAC permissions to service principal (run this if you get auth errors)"
+    cmds:
+      - |
+        if [ ! -f cosmosdb_account_name.txt ]; then
+          echo "ERROR: Test infrastructure not set up. Run 'task setup' first."
+          exit 1
+        fi
+      - task: grant-rbac-permissions
+
+  show-rbac-roles:
+    desc: "Show Cosmos DB data plane RBAC roles and assignments"
+    cmds:
+      - |
+        if [ ! -f cosmosdb_account_name.txt ]; then
+          echo "ERROR: Test infrastructure not set up. Run 'task setup' first."
+          exit 1
+        fi
+        ACCOUNT_NAME=$(cat cosmosdb_account_name.txt)
+        
+        echo "========================================="
+        echo "Cosmos DB Data Plane RBAC Configuration"
+        echo "========================================="
+        echo ""
+        echo "Account: $ACCOUNT_NAME"
+        echo ""
+        echo "Available Role Definitions:"
+        echo "-------------------------------------------"
+        az cosmosdb sql role definition list \
+          --account-name $ACCOUNT_NAME \
+          --resource-group {{.RESOURCE_GROUP}} \
+          -o table
+        echo ""
+        echo "Current Role Assignments:"
+        echo "-------------------------------------------"
+        az cosmosdb sql role assignment list \
+          --account-name $ACCOUNT_NAME \
+          --resource-group {{.RESOURCE_GROUP}} \
+          -o table
+        echo ""
+        echo "Note: These are DATA PLANE roles (for accessing data),"
+        echo "not Azure ARM control plane roles (for managing the account)."
+    silent: false
+
   help:
     desc: "Show help information"
     cmds:
@@ -337,28 +492,38 @@ tasks:
         echo "Azure Cosmos DB Test Infrastructure Tasks"
         echo ""
         echo "Available tasks:"
-        echo "  setup               - Create all test infrastructure (resource group, Cosmos DB, test data)"
-        echo "  test                - Run syntax and integration tests"
-        echo "  status              - Check status of test infrastructure"
-        echo "  logs                - View Cosmos DB metrics"
-        echo "  cleanup             - Delete all test infrastructure"
-        echo "  check-prerequisites - Check if prerequisites are installed"
-        echo "  install-python-deps - Install required Python packages (auto-run by setup)"
-        echo "  register-provider   - Register Microsoft.DocumentDB provider (auto-run by setup)"
+        echo "  setup                        - Create all test infrastructure (resource group, Cosmos DB, test data)"
+        echo "  test                         - Run syntax and integration tests"
+        echo "  status                       - Check status of test infrastructure"
+        echo "  logs                         - View Cosmos DB metrics"
+        echo "  cleanup                      - Delete all test infrastructure"
+        echo "  check-prerequisites          - Check if prerequisites are installed"
+        echo "  show-rbac-roles              - Show Cosmos DB data plane RBAC roles and assignments"
+        echo "  grant-service-principal-rbac - Grant RBAC permissions to service principal"
+        echo "  install-python-deps          - Install required Python packages (auto-run by setup)"
+        echo "  register-provider            - Register Microsoft.DocumentDB provider (auto-run by setup)"
         echo ""
         echo "Typical workflow:"
         echo "  1. task check-prerequisites  # Verify setup"
-        echo "  2. task setup                # Create infrastructure (takes ~5-10 minutes)"
-        echo "  3. task test                 # Run tests"
-        echo "  4. task cleanup              # Clean up when done"
+        echo "  2. source .test/tf.secret    # Load service principal credentials (if using Azure AD auth)"
+        echo "  3. task setup                # Create infrastructure (takes ~5-10 minutes)"
+        echo "  4. task test                 # Run tests"
+        echo "  5. task cleanup              # Clean up when done"
         echo ""
         echo "Requirements:"
         echo "  - Azure CLI installed and authenticated (az login)"
         echo "  - Python 3.x with azure-cosmos package (pip install azure-cosmos)"
         echo "  - Robot Framework (pip install robotframework)"
         echo ""
-        echo "First time setup issues?"
-        echo "  If you see 'MissingSubscriptionRegistration', run:"
-        echo "    task register-provider"
+        echo "Authentication Options:"
+        echo "  - Key-based: No extra setup needed (keys are auto-generated)"
+        echo "  - Service Principal: Source .test/tf.secret before running 'task setup'"
+        echo "    This ensures RBAC permissions are granted during setup"
+        echo ""
+        echo "Troubleshooting:"
+        echo "  - 'MissingSubscriptionRegistration' error:"
+        echo "    Run: task register-provider"
+        echo "  - 'Request blocked by Auth' or RBAC permission errors:"
+        echo "    Run: task grant-service-principal-rbac"
     silent: true
 

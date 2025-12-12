@@ -33,11 +33,6 @@ Suite Initialization
     ...    description=The Cosmos DB account endpoint URL (e.g., https://myaccount.documents.azure.com:443/)
     ...    pattern=\w*
     ...    example=https://myaccount.documents.azure.com:443/
-    ${azure_credentials}=    RW.Core.Import Secret
-    ...    azure_credentials
-    ...    type=string
-    ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET for service principal authentication
-    ...    pattern=\w*
     ${DATABASE_NAME}=    RW.Core.Import User Variable    DATABASE_NAME
     ...    type=string
     ...    description=The name of the Cosmos DB database
@@ -65,5 +60,43 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Count error documents in Cosmos DB"
     
-    RW.Azure.Cosmosdb.Connect To Cosmosdb With Azure Credentials    ${COSMOSDB_ENDPOINT}
+    # Try Azure AD authentication first (service principal - recommended), fall back to key-based auth
+    ${auth_method}=    Set Variable    none
+    ${auth_error}=    Set Variable    ${EMPTY}
+    TRY
+        ${azure_credentials}=    RW.Core.Import Secret
+        ...    azure_credentials
+        ...    type=string
+        ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET for service principal authentication
+        ...    pattern=\w*
+        TRY
+            RW.Azure.Cosmosdb.Connect To Cosmosdb With Azure Credentials    ${COSMOSDB_ENDPOINT}
+            ${auth_method}=    Set Variable    azure_credentials
+        EXCEPT    AS    ${azure_error}
+            Log    Azure AD authentication failed: ${azure_error}    WARN
+            Log    Falling back to key-based authentication...    WARN
+            ${auth_error}=    Set Variable    ${azure_error}
+            ${cosmosdb_key}=    RW.Core.Import Secret
+            ...    cosmosdb_key
+            ...    type=string
+            ...    description=The Cosmos DB account primary or secondary key
+            ...    pattern=\w*
+            RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.key}
+            ${auth_method}=    Set Variable    cosmosdb_key
+        END
+    EXCEPT    AS    ${key_error}
+        ${cosmosdb_key}=    RW.Core.Import Secret
+        ...    cosmosdb_key
+        ...    type=string
+        ...    description=The Cosmos DB account primary or secondary key
+        ...    pattern=\w*
+        TRY
+            RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.key}
+            ${auth_method}=    Set Variable    cosmosdb_key
+        EXCEPT    AS    ${final_error}
+            # Both authentication methods failed - this is critical for SLI
+            Fail    Authentication to Cosmos DB failed. Azure AD: ${auth_error} | Key-based: ${final_error}
+        END
+    END
+    Log    Successfully connected using authentication method: ${auth_method}    INFO
 

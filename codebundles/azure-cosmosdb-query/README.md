@@ -18,13 +18,102 @@ SELECT COUNT(1) FROM c WHERE c.status = 'error'
 ```
 
 ## Requirements
+
+### Required Variables
 - **COSMOSDB_ENDPOINT** (user variable): The Cosmos DB account endpoint URL (e.g., `https://myaccount.documents.azure.com:443/`)
-- **azure_credentials** (secret): Service principal credentials with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
 - **DATABASE_NAME** (user variable): The name of the Cosmos DB database
 - **CONTAINER_NAME** (user variable): The name of the Cosmos DB container
 - **COSMOSDB_QUERY** (user variable): The SQL query to execute
 - **QUERY_PARAMETERS** (user variable, optional): JSON string of query parameters for parameterized queries
 - **TASK_TITLE** (user variable, optional): Custom name for the task
+
+### Authentication (choose one approach)
+**Option 1: Service Principal with Data Plane RBAC** (most secure)
+- **azure_credentials** (secret): Service principal with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+- Requires: Data plane RBAC role granted (see setup below)
+
+**Option 2: Service Principal with Control Plane Key Retrieval** (easiest for admins)
+- **azure_credentials** (secret): Service principal with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
+- **AZURE_SUBSCRIPTION_ID** (user variable): Your Azure subscription ID
+- **AZURE_RESOURCE_GROUP** (user variable): Resource group containing Cosmos DB
+- **COSMOSDB_ACCOUNT_NAME** (user variable): Cosmos DB account name
+- Requires: "Cosmos DB Account Reader" or "Contributor" role (visible in Azure Portal)
+
+**Option 3: Direct Key** (simplest, less secure)
+- **cosmosdb_key** (secret): The Cosmos DB account primary or secondary key
+
+## Authentication
+
+This codebundle supports **three authentication methods** with intelligent automatic fallback:
+
+### Method 1: Service Principal with Data Plane RBAC (Most Secure) ⭐
+Direct data access using Azure AD identity. **No keys involved.**
+
+**Setup:**
+```bash
+# Grant data plane RBAC permissions (via CLI only)
+az cosmosdb sql role assignment create \
+  --account-name <cosmos-account-name> \
+  --resource-group <resource-group> \
+  --scope "/" \
+  --principal-id <service-principal-object-id> \
+  --role-definition-id 00000000-0000-0000-0000-000000000001
+```
+
+**Required:**
+- `azure_credentials` secret (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET)
+
+**Note:** Data plane roles are NOT visible in Azure Portal IAM - they're managed separately via CLI.
+
+---
+
+### Method 2: Service Principal with Key Retrieval (Easiest for Admins) ⭐⭐
+Service principal retrieves the key from Azure control plane, then connects with that key.
+
+**Setup:**
+```bash
+# Grant control plane permission (visible in Azure Portal)
+az role assignment create \
+  --assignee <service-principal-object-id> \
+  --role "Cosmos DB Account Reader" \
+  --scope /subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.DocumentDB/databaseAccounts/<account-name>
+```
+
+**Required:**
+- `azure_credentials` secret (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET)
+- `AZURE_SUBSCRIPTION_ID` user variable
+- `AZURE_RESOURCE_GROUP` user variable  
+- `COSMOSDB_ACCOUNT_NAME` user variable
+
+**Advantages:**
+- Uses familiar Azure Portal RBAC (Contributor, Cosmos DB Account Reader, etc.)
+- No need to configure data plane RBAC
+- One credential for both control plane and data access
+
+---
+
+### Method 3: Direct Key (Simplest, Less Secure)
+Directly use the Cosmos DB account key.
+
+**Setup:**
+```bash
+# Get the key
+az cosmosdb keys list --name <account-name> --resource-group <rg> --query primaryMasterKey -o tsv
+```
+
+**Required:**
+- `cosmosdb_key` secret
+
+---
+
+### Automatic Fallback Logic
+The codebundle tries methods in this order:
+1. Try Method 1 (data plane RBAC)
+2. If fails and subscription/RG/account variables provided → Try Method 2 (retrieve key)
+3. If fails or variables not provided → Try Method 3 (direct key)
+4. If all fail → Raise descriptive issue
+
+**You only need to configure ONE method!** The codebundle automatically determines which one to use.
 
 ## Usage Examples
 

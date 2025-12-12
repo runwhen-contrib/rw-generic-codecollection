@@ -7,3 +7,4 @@ pyyaml>=6.0.1
 rw-cli-keywords>=0.0.23
 azure-cosmos>=4.5.1
 azure-identity>=1.15.0
+azure-mgmt-cosmosdb>=9.0.0
