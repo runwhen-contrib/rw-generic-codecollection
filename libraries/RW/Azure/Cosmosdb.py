@@ -226,13 +226,12 @@ class Cosmosdb:
                         elif "Count" in first_item:
                             return int(first_item["Count"])
                         else:
-                            # Try to extract numeric value from first field
-                            first_value = list(first_item.values())[0]
-                            if isinstance(first_value, (int, float)):
-                                return int(first_value)
+                            # Try to extract numeric value from first field if dict is not empty
+                            values = list(first_item.values())
+                            if values and isinstance(values[0], (int, float)):
+                                return int(values[0])
                             else:
-                                # If first value is not numeric, this might not be a COUNT query result
-                                # Fall back to counting items instead
+                                # If first value is not numeric or dict is empty, fall back to counting items
                                 return len(items)
                     else:
                         # Fallback for unexpected types - try to convert to int

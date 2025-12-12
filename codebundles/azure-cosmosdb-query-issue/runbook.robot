@@ -25,7 +25,7 @@ ${TASK_TITLE}
         ...    ${COSMOSDB_QUERY}
         ...    ${QUERY_PARAMETERS}
         ${results_list}=    Evaluate    json.loads($results)    json
-        ${count}=    Evaluate    len($results_list)
+        ${count}=    Extract Count From Results    ${COSMOSDB_QUERY}    ${results_list}
         
         # Determine if issue should be raised based on condition
         ${should_raise_issue}=    Set Variable    ${False}
@@ -86,6 +86,57 @@ ${TASK_TITLE}
 
 
 *** Keywords ***
+Extract Count From Results
+    [Arguments]    ${query}    ${results_list}
+    [Documentation]    Extracts count from query results, handling both regular queries and COUNT aggregate queries
+    
+    # Check if query is a COUNT aggregate query using regex
+    ${is_count_query}=    Evaluate    bool(__import__('re').search(r'\\bCOUNT\\s*\\(', $query, __import__('re').IGNORECASE))
+    
+    IF    ${is_count_query} and ${results_list}
+        # This is a COUNT query - extract the count value
+        ${first_item}=    Set Variable    ${results_list}[0]
+        ${first_item_type}=    Evaluate    type($first_item).__name__
+        
+        IF    "${first_item_type}" == "int" or "${first_item_type}" == "float"
+            # SELECT VALUE COUNT(1) returns just a number
+            ${count}=    Convert To Integer    ${first_item}
+            RETURN    ${count}
+        ELSE IF    "${first_item_type}" == "dict"
+            # SELECT COUNT(1) returns an object - try different field names
+            ${has_dollar1}=    Evaluate    "$1" in $first_item
+            ${has_count}=    Evaluate    "count" in $first_item
+            ${has_Count}=    Evaluate    "Count" in $first_item
+            
+            IF    ${has_dollar1}
+                ${count}=    Convert To Integer    ${first_item}[$1]
+                RETURN    ${count}
+            ELSE IF    ${has_count}
+                ${count}=    Convert To Integer    ${first_item}[count]
+                RETURN    ${count}
+            ELSE IF    ${has_Count}
+                ${count}=    Convert To Integer    ${first_item}[Count]
+                RETURN    ${count}
+            ELSE
+                # Try to extract first value if it's numeric and dict is not empty
+                ${values_list}=    Evaluate    list($first_item.values())
+                ${values_length}=    Evaluate    len($values_list)
+                IF    ${values_length} > 0
+                    ${first_value}=    Set Variable    ${values_list}[0]
+                    ${value_type}=    Evaluate    type($first_value).__name__
+                    IF    "${value_type}" == "int" or "${value_type}" == "float"
+                        ${count}=    Convert To Integer    ${first_value}
+                        RETURN    ${count}
+                    END
+                END
+            END
+        END
+    END
+    
+    # Fall back to counting items in the list
+    ${count}=    Evaluate    len($results_list)
+    RETURN    ${count}
+
 Suite Initialization
     ${COSMOSDB_ENDPOINT}=    RW.Core.Import User Variable
     ...    COSMOSDB_ENDPOINT

@@ -68,12 +68,16 @@ Extract Count From Results
                 ${count}=    Convert To Integer    ${first_item}[Count]
                 RETURN    ${count}
             ELSE
-                # Try to extract first value if it's numeric
-                ${first_value}=    Evaluate    list($first_item.values())[0]
-                ${value_type}=    Evaluate    type($first_value).__name__
-                IF    "${value_type}" == "int" or "${value_type}" == "float"
-                    ${count}=    Convert To Integer    ${first_value}
-                    RETURN    ${count}
+                # Try to extract first value if it's numeric and dict is not empty
+                ${values_list}=    Evaluate    list($first_item.values())
+                ${values_length}=    Evaluate    len($values_list)
+                IF    ${values_length} > 0
+                    ${first_value}=    Set Variable    ${values_list}[0]
+                    ${value_type}=    Evaluate    type($first_value).__name__
+                    IF    "${value_type}" == "int" or "${value_type}" == "float"
+                        ${count}=    Convert To Integer    ${first_value}
+                        RETURN    ${count}
+                    END
                 END
             END
         END
