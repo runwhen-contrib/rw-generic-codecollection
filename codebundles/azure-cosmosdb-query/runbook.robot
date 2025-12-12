@@ -91,16 +91,29 @@ Suite Initialization
     ...    pattern=\w*
     ...    example="Query Cosmos DB for error documents"
     
+    # Import optional secrets for authentication
+    ${azure_credentials}=    RW.Core.Import Secret
+    ...    azure_credentials
+    ...    type=string
+    ...    description=Service principal credentials with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET (optional)
+    ...    pattern=.*
+    ...    optional=True
+    
+    ${cosmosdb_key}=    RW.Core.Import Secret
+    ...    cosmosdb_key
+    ...    type=string
+    ...    description=The Cosmos DB account primary or secondary key (optional)
+    ...    pattern=.*
+    ...    optional=True
+    
     # Smart authentication with multiple fallback options
     ${auth_method}=    Set Variable    none
     ${auth_error}=    Set Variable    ${EMPTY}
     ${sp_key_error}=    Set Variable    ${EMPTY}
-    TRY
-        ${azure_credentials}=    RW.Core.Import Secret
-        ...    azure_credentials
-        ...    type=string
-        ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET for service principal authentication
-        ...    pattern=\w*
+    ${has_azure_creds}=    Evaluate    bool($azure_credentials)
+    ${has_cosmosdb_key}=    Evaluate    bool($cosmosdb_key)
+    
+    IF    ${has_azure_creds}
         # Try 1: Azure AD data plane RBAC
         TRY
             RW.Azure.Cosmosdb.Connect To Cosmosdb With Azure Credentials    ${COSMOSDB_ENDPOINT}
@@ -122,50 +135,42 @@ Suite Initialization
                 EXCEPT    AS    ${retrieve_error}
                     Log    Failed to retrieve key via service principal: ${retrieve_error}    WARN
                     ${sp_key_error}=    Set Variable    ${retrieve_error}
-                    # Try 3: Fall back to cosmosdb_key secret
-                    ${cosmosdb_key}=    RW.Core.Import Secret
-                    ...    cosmosdb_key
-                    ...    type=string
-                    ...    description=The Cosmos DB account primary or secondary key
-                    ...    pattern=\w*
-                    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.key}
-                    ${auth_method}=    Set Variable    cosmosdb_key
+                    # Try 3: Fall back to cosmosdb_key secret if available
+                    IF    ${has_cosmosdb_key}
+                        RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key}
+                        ${auth_method}=    Set Variable    cosmosdb_key
+                    ELSE
+                        Fail    Azure AD authentication failed and no cosmosdb_key provided
+                    END
                 END
             ELSE
                 Log    Missing AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, or COSMOSDB_ACCOUNT_NAME - cannot retrieve key    WARN
                 Log    Falling back to cosmosdb_key secret...    WARN
-                # Try 3: Fall back to cosmosdb_key secret
-                ${cosmosdb_key}=    RW.Core.Import Secret
-                ...    cosmosdb_key
-                ...    type=string
-                ...    description=The Cosmos DB account primary or secondary key
-                ...    pattern=\w*
-                RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.key}
-                ${auth_method}=    Set Variable    cosmosdb_key
+                # Try 3: Fall back to cosmosdb_key secret if available
+                IF    ${has_cosmosdb_key}
+                    RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key}
+                    ${auth_method}=    Set Variable    cosmosdb_key
+                ELSE
+                    Fail    Azure AD authentication failed and no cosmosdb_key provided
+                END
             END
         END
-    EXCEPT    AS    ${key_error}
-        # azure_credentials not available, try cosmosdb_key directly
-        ${cosmosdb_key}=    RW.Core.Import Secret
-        ...    cosmosdb_key
-        ...    type=string
-        ...    description=The Cosmos DB account primary or secondary key
-        ...    pattern=\w*
-        TRY
-            RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key.key}
-            ${auth_method}=    Set Variable    cosmosdb_key
-        EXCEPT    AS    ${final_error}
-            # All authentication methods failed - raise an issue
-            RW.Core.Add Issue
-            ...    title=Failed to Authenticate to Cosmos DB
-            ...    severity=1
-            ...    expected=Should successfully authenticate using azure_credentials (service principal) or cosmosdb_key
-            ...    actual=All authentication methods failed
-            ...    reproduce_hint=Check that azure_credentials or cosmosdb_key secret is configured correctly
-            ...    next_steps=1. Verify azure_credentials contains valid AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET\n2. For data plane RBAC: Grant Cosmos DB Built-in Data Reader role\n3. For control plane key retrieval: Set AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, COSMOSDB_ACCOUNT_NAME and grant "Cosmos DB Account Reader" or "Contributor" role\n4. Alternatively, provide a valid cosmosdb_key secret\n5. Check endpoint URL is correct: ${COSMOSDB_ENDPOINT}
-            ...    details=Failed to authenticate to Cosmos DB at ${COSMOSDB_ENDPOINT}\n\nAzure AD RBAC Error: ${auth_error}\nAzure AD Key Retrieval Error: ${sp_key_error}\nDirect Key Error: ${final_error}\n\nSee README for authentication options.
-            Fail    Authentication to Cosmos DB failed with all methods
-        END
+    ELSE IF    ${has_cosmosdb_key}
+        # Only cosmosdb_key provided
+        RW.Azure.Cosmosdb.Connect To Cosmosdb    ${COSMOSDB_ENDPOINT}    ${cosmosdb_key}
+        ${auth_method}=    Set Variable    cosmosdb_key
+    ELSE
+        # No credentials provided at all
+        RW.Core.Add Issue
+        ...    title=No Cosmos DB Authentication Credentials Provided
+        ...    severity=1
+        ...    expected=Either azure_credentials or cosmosdb_key secret should be configured
+        ...    actual=No authentication credentials found
+        ...    reproduce_hint=Configure either azure_credentials or cosmosdb_key secret
+        ...    next_steps=1. For service principal: Configure azure_credentials secret with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET\n2. For key-based auth: Configure cosmosdb_key secret\n3. See README for authentication options
+        ...    details=No authentication credentials provided for Cosmos DB at ${COSMOSDB_ENDPOINT}\n\nSee README for authentication setup instructions.
+        Fail    No authentication credentials provided
     END
+    
     Log    Successfully connected using authentication method: ${auth_method}    INFO
 
