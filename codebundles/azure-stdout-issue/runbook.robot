@@ -93,7 +93,8 @@ Suite Initialization
     ...    default=300
 
     ${OS_PATH}=    Get Environment Variable    PATH
+    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
     Set Suite Variable
     ...    ${env}
-    ...    {"HOME":"$CODEBUNDLE_TEMP_DIR","PATH":"$PATH:${OS_PATH}"}
+    ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}"}
 
