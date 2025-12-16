@@ -38,6 +38,9 @@ Suite Initialization
     ...    type=string
     ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET, AZURE_SUBSCRIPTION_ID
     ...    pattern=\w*
+    ${powershell_auth}=     RW.CLI.Run Cli
+    ...    cmd=pwsh -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue; Import-Module Az.Accounts; \$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \$token -AccountId \$account.user.name -TenantId \$account.tenantId -SubscriptionId \$account.id"
+    ...    timeout_seconds=30
     ${AZURE_COMMAND}=    RW.Core.Import User Variable    AZURE_COMMAND
     ...    type=string
     ...    description=The az cli command to run. Can use tools like jq.
