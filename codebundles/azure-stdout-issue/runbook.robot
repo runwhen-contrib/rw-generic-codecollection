@@ -22,6 +22,7 @@ ${TASK_TITLE}
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
     ...    timeout_seconds=${TIMEOUT_SECONDS}
+    ...    env=${env}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -90,4 +91,9 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=300
     ...    default=300
+
+    ${OS_PATH}=    Get Environment Variable    PATH
+    Set Suite Variable
+    ...    ${env}
+    ...    {"HOME":"$CODEBUNDLE_TEMP_DIR","PATH":"$PATH:${OS_PATH}"}
 
