@@ -180,7 +180,6 @@ Suite Initialization
     ...    description=Name of the first environment variable (optional)
     ...    pattern=.*
     ...    example=DATABASE_URL
-    ...    default=
     
     ${ENV_VAR_1_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_1_VALUE
@@ -195,7 +194,6 @@ Suite Initialization
     ...    description=Name of the second environment variable (optional)
     ...    pattern=.*
     ...    example=API_KEY
-    ...    default=
     
     ${ENV_VAR_2_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_2_VALUE
@@ -210,7 +208,6 @@ Suite Initialization
     ...    description=Name of the third environment variable (optional)
     ...    pattern=.*
     ...    example=GIT_TOKEN
-    ...    default=
     
     ${ENV_VAR_3_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_3_VALUE
@@ -225,7 +222,6 @@ Suite Initialization
     ...    description=Name of the fourth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_4_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_4_VALUE
@@ -240,7 +236,6 @@ Suite Initialization
     ...    description=Name of the fifth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_5_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_5_VALUE
@@ -255,7 +250,6 @@ Suite Initialization
     ...    description=Name of the sixth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_6_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_6_VALUE
@@ -270,7 +264,6 @@ Suite Initialization
     ...    description=Name of the seventh environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_7_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_7_VALUE
@@ -285,7 +278,6 @@ Suite Initialization
     ...    description=Name of the eighth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_8_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_8_VALUE
@@ -300,7 +292,6 @@ Suite Initialization
     ...    description=Name of the ninth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_9_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_9_VALUE
@@ -315,7 +306,6 @@ Suite Initialization
     ...    description=Name of the tenth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=
     
     ${ENV_VAR_10_VALUE}=    RW.Core.Import Secret
     ...    ENV_VAR_10_VALUE
