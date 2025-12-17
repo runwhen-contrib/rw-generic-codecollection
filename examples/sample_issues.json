@@ -1,0 +1,21 @@
+[
+  {
+    "title": "High CPU Usage Detected",
+    "severity": 2,
+    "expected": "CPU usage should be below 80%",
+    "actual": "CPU usage is at 95%",
+    "reproduce_hint": "Check the system metrics for CPU usage",
+    "next_steps": "1. Identify the process consuming CPU\n2. Consider scaling resources\n3. Investigate potential CPU leaks",
+    "details": "CPU usage has exceeded threshold for the past 15 minutes.\nAverage: 95%\nPeak: 98%"
+  },
+  {
+    "title": "Memory Usage Warning",
+    "severity": 3,
+    "expected": "Memory usage should be below 70%",
+    "actual": "Memory usage is at 78%",
+    "reproduce_hint": "Check memory metrics",
+    "next_steps": "Monitor memory usage and consider increasing memory allocation if trend continues",
+    "details": "Memory usage is approaching threshold.\nCurrent: 78%\nTrend: Increasing"
+  }
+]
+

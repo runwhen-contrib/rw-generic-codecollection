@@ -14,6 +14,7 @@ Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
 Library             Collections
+Library             RW.DynamicIssues
 
 Suite Setup         Suite Initialization
 
@@ -99,12 +100,40 @@ ${TASK_TITLE}
     ...        timeout_seconds=${TIMEOUT_SECONDS}
 
     ${history}=    RW.CLI.Pop Shell History
+    
+    # Check for report.txt and add to report if present
+    ${report_file}=    Set Variable    ${CODEBUNDLE_TEMP_DIR}/report.txt
+    ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file}
+    IF    ${report_exists}
+        ${report_content}=    Get File    ${report_file}
+        RW.Core.Add Pre To Report    ${report_content}
+    END
+    
+    # Method 1: File-based dynamic issue generation (issues.json)
+    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
+    
+    # Method 2: JSON query-based dynamic issue generation (if enabled and configured)
+    ${json_issues_created}=    Set Variable    0
+    IF    """${ISSUE_JSON_QUERY_ENABLED}""" == "true" and """${rsp.stdout}""" != ""
+        ${json_issues_created}=    RW.DynamicIssues.Process Json Query Issues
+        ...    ${rsp.stdout}
+        ...    ${ISSUE_JSON_TRIGGER_KEY}
+        ...    ${ISSUE_JSON_TRIGGER_VALUE}
+        ...    ${ISSUE_JSON_ISSUES_KEY}
+    END
 
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
     RW.Core.Add Pre To Report    Commands Used: ${history}
     
-    IF    ${rsp.returncode} != 0
+    # Add summary of dynamic issues
+    ${total_dynamic_issues}=    Evaluate    ${file_issues_created} + ${json_issues_created}
+    IF    ${total_dynamic_issues} > 0
+        RW.Core.Add Pre To Report    Dynamic Issue Generation Summary: Created ${file_issues_created} issues from files and ${json_issues_created} issues from JSON queries.
+    END
+    
+    # Method 3: Traditional return code-based issue generation (if enabled)
+    IF    ${rsp.returncode} != 0 and """${RETURNCODE_ISSUE_ENABLED}""" == "true"
         RW.Core.Add Issue
         ...    severity=2
         ...    expected=Script command should execute successfully
@@ -299,8 +328,43 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=1800
     ...    default=1800
+    
+    # Dynamic Issue Generation Configuration
+    ${RETURNCODE_ISSUE_ENABLED}=    RW.Core.Import User Variable    RETURNCODE_ISSUE_ENABLED
+    ...    type=string
+    ...    description=Enable return code-based issue generation (true/false). When true, non-zero exit codes create issues.
+    ...    pattern=\w*
+    ...    example=true
+    ...    default=true
+    ${ISSUE_JSON_QUERY_ENABLED}=    RW.Core.Import User Variable    ISSUE_JSON_QUERY_ENABLED
+    ...    type=string
+    ...    description=Enable JSON query-based issue generation (true/false). Searches stdout for JSON patterns to create issues.
+    ...    pattern=\w*
+    ...    example=true
+    ...    default=false
+    ${ISSUE_JSON_TRIGGER_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_KEY
+    ...    type=string
+    ...    description=JSON key to check for triggering issue generation (e.g., "issuesIdentified", "storeIssues", "hasErrors").
+    ...    pattern=.*
+    ...    example=issuesIdentified
+    ...    default=issuesIdentified
+    ${ISSUE_JSON_TRIGGER_VALUE}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_VALUE
+    ...    type=string
+    ...    description=Value of trigger key that indicates issues should be created (e.g., "true", "yes", or "1").
+    ...    pattern=.*
+    ...    example=true
+    ...    default=true
+    ${ISSUE_JSON_ISSUES_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_ISSUES_KEY
+    ...    type=string
+    ...    description=JSON key containing the list of issues to create (e.g., "issues", "problems", "errors").
+    ...    pattern=.*
+    ...    example=issues
+    ...    default=issues
+    
+    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
 
     # Set all suite variables
+    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${kubeconfig}
     Set Suite Variable    ${ENV_VAR_1_NAME}
@@ -326,3 +390,8 @@ Suite Initialization
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE} 
     Set Suite Variable    ${TIMEOUT_SECONDS}
+    Set Suite Variable    ${RETURNCODE_ISSUE_ENABLED}
+    Set Suite Variable    ${ISSUE_JSON_QUERY_ENABLED}
+    Set Suite Variable    ${ISSUE_JSON_TRIGGER_KEY}
+    Set Suite Variable    ${ISSUE_JSON_TRIGGER_VALUE}
+    Set Suite Variable    ${ISSUE_JSON_ISSUES_KEY}
