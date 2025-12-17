@@ -370,10 +370,10 @@ Suite Initialization
     ...    example=issues
     ...    default=issues
     
-    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
+    #${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
 
     # Set all suite variables
-    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
+    #Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${kubeconfig}
     Set Suite Variable    ${ENV_VAR_1_NAME}
