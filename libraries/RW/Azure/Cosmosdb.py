@@ -5,7 +5,7 @@ This library provides keywords for executing SQL queries against Azure Cosmos DB
 """
 
 from azure.cosmos import CosmosClient, exceptions
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, EnvironmentCredential, ChainedTokenCredential, AzureCliCredential
 from azure.mgmt.cosmosdb import CosmosDBManagementClient
 from typing import Optional
 import json
@@ -59,7 +59,8 @@ class Cosmosdb:
     def connect_to_cosmosdb_with_azure_credentials(self, endpoint: str) -> str:
         """
         Connect to an Azure Cosmos DB account using Azure AD authentication.
-        Uses DefaultAzureCredential which supports service principals, managed identities, and Azure CLI credentials.
+        Prioritizes service principal credentials from environment variables (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET)
+        over other authentication methods like managed identity.
         
         Requires azure_credentials secret with AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET
         to be set as environment variables.
@@ -75,7 +76,13 @@ class Cosmosdb:
         """
         try:
             self.endpoint = endpoint
-            credential = DefaultAzureCredential()
+            # Use ChainedTokenCredential to prioritize EnvironmentCredential (service principal)
+            # over Azure CLI credential. This prevents managed identity from being used when
+            # service principal credentials are available in environment variables.
+            credential = ChainedTokenCredential(
+                EnvironmentCredential(),
+                AzureCliCredential()
+            )
             self.client = CosmosClient(self.endpoint, credential)
             return f"Successfully connected to Cosmos DB account at {endpoint} using Azure AD authentication"
         except Exception as e:
@@ -110,7 +117,12 @@ class Cosmosdb:
         """
         try:
             self.endpoint = endpoint
-            credential = DefaultAzureCredential()
+            # Use ChainedTokenCredential to prioritize EnvironmentCredential (service principal)
+            # over Azure CLI credential. This prevents managed identity from being used.
+            credential = ChainedTokenCredential(
+                EnvironmentCredential(),
+                AzureCliCredential()
+            )
             
             # Use Azure Management API to retrieve the key
             cosmos_mgmt_client = CosmosDBManagementClient(credential, subscription_id)
