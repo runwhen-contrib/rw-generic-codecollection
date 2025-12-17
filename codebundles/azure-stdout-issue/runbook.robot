@@ -96,6 +96,6 @@ Suite Initialization
     ...    ${env}
     ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}"}
     ${powershell_auth}=     RW.CLI.Run Cli
-    ...    cmd=pwsh -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue; Import-Module Az.Accounts; \$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \$token -AccountId \$account.user.name -TenantId \$account.tenantId -SubscriptionId \$account.id"
+    ...    cmd=pwsh -Command "\$PSStyle.OutputRendering = 'PlainText'; \$ProgressPreference = 'SilentlyContinue'; Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue; Import-Module Az.Accounts; \$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \$token -AccountId \$account.user.name -TenantId \$account.tenantId -SubscriptionId \$account.id | Out-Null"
     ...    timeout_seconds=30
     ...    env=${env}
