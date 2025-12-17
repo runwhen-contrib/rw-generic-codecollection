@@ -30,8 +30,6 @@ ${TASK_TITLE}
     # Check for report.txt files (searches recursively) and add to report if present
     ${find_result}=    RW.CLI.Run Cli
     ...    cmd=find ${CODEBUNDLE_TEMP_DIR} -name "report.txt" -type f 2>/dev/null || true
-    ...    env=${env}
-    ...    secret_file__kubeconfig=${KUBECONFIG}
     IF    """${find_result.stdout}""" != ""
         ${report_files}=    Split String    ${find_result.stdout}    \n
         FOR    ${report_file}    IN    @{report_files}

@@ -23,14 +23,13 @@ ${TASK_TITLE}
     [Tags]    azure    cli    generic
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
+    ...    env=${env}
     ...    timeout_seconds=${TIMEOUT_SECONDS}
     ${history}=    RW.CLI.Pop Shell History
     
     # Check for report.txt files (searches recursively) and add to report if present
     ${find_result}=    RW.CLI.Run Cli
     ...    cmd=find ${CODEBUNDLE_TEMP_DIR} -name "report.txt" -type f 2>/dev/null || true
-    ...    env=${env}
-    ...    secret_file__kubeconfig=${KUBECONFIG}
     IF    """${find_result.stdout}""" != ""
         ${report_files}=    Split String    ${find_result.stdout}    \n
         FOR    ${report_file}    IN    @{report_files}
@@ -118,5 +117,13 @@ Suite Initialization
     ...    example=issues
     ...    default=issues
     
+    ${OS_PATH}=    Get Environment Variable    PATH
     ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
-    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
+    Set Suite Variable
+    ...    ${env}
+    ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}","TERM":"dumb","NO_COLOR":"1"}
+    ${powershell_auth}=     RW.CLI.Run Cli
+    ...    cmd=pwsh -NoLogo -NoProfile -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue 2>&1 | Out-Null; Import-Module Az.Accounts; \\$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \\$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \\$token -AccountId \\$account.user.name -TenantId \\$account.tenantId -SubscriptionId \\$account.id | Out-Null"
+    ...    timeout_seconds=30
+    ...    env=${env}
+    ...    include_in_history=false
