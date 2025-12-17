@@ -152,7 +152,6 @@ Suite Initialization
     ...    description=SSH private key for git repository access (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     # Import optional kubeconfig for Kubernetes operations
@@ -162,7 +161,6 @@ Suite Initialization
     ...    description=Kubernetes config file for cluster access (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     # Import up to 10 environment variable pairs
@@ -179,7 +177,6 @@ Suite Initialization
     ...    description=Value of the first environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_2_NAME}=    RW.Core.Import User Variable    ENV_VAR_2_NAME
@@ -195,7 +192,6 @@ Suite Initialization
     ...    description=Value of the second environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_3_NAME}=    RW.Core.Import User Variable    ENV_VAR_3_NAME
@@ -211,7 +207,6 @@ Suite Initialization
     ...    description=Value of the third environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_4_NAME}=    RW.Core.Import User Variable    ENV_VAR_4_NAME
@@ -226,7 +221,6 @@ Suite Initialization
     ...    description=Value of the fourth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_5_NAME}=    RW.Core.Import User Variable    ENV_VAR_5_NAME
@@ -241,7 +235,6 @@ Suite Initialization
     ...    description=Value of the fifth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_6_NAME}=    RW.Core.Import User Variable    ENV_VAR_6_NAME
@@ -256,7 +249,6 @@ Suite Initialization
     ...    description=Value of the sixth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_7_NAME}=    RW.Core.Import User Variable    ENV_VAR_7_NAME
@@ -271,7 +263,6 @@ Suite Initialization
     ...    description=Value of the seventh environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_8_NAME}=    RW.Core.Import User Variable    ENV_VAR_8_NAME
@@ -286,7 +277,6 @@ Suite Initialization
     ...    description=Value of the eighth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_9_NAME}=    RW.Core.Import User Variable    ENV_VAR_9_NAME
@@ -301,7 +291,6 @@ Suite Initialization
     ...    description=Value of the ninth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     ${ENV_VAR_10_NAME}=    RW.Core.Import User Variable    ENV_VAR_10_NAME
@@ -316,7 +305,6 @@ Suite Initialization
     ...    description=Value of the tenth environment variable (optional)
     ...    pattern=.*
     ...    example=
-    ...    default=""
     ...    optional=True
     
     # Import required script command
