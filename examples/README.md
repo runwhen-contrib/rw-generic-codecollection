@@ -6,8 +6,9 @@ This directory contains examples and documentation for dynamic issue generation 
 
 ### Method 1: File-Based Issues (No Config Needed)
 
-Create `issues.json` in your script:
+Create `issues.json` in your script (can be in any subdirectory):
 ```bash
+# Can be in root or any subdirectory - searches recursively!
 cat > $CODEBUNDLE_TEMP_DIR/issues.json << EOF
 [
   {
@@ -40,8 +41,9 @@ echo '{"issuesIdentified": true, "issues": [{"title": "Problem", "severity": 2}]
 
 ### Report Content
 
-To add report content, create `report.txt`:
+To add report content, create `report.txt` (can be in any subdirectory):
 ```bash
+# Can be in root or any subdirectory - searches recursively!
 cat > $CODEBUNDLE_TEMP_DIR/report.txt << EOF
 System analysis completed.
 Found 3 issues requiring attention.
@@ -97,14 +99,23 @@ ISSUE_JSON_ISSUES_KEY: problems
 
 ## Supported Codebundles
 
-- `azure-stdout-issue`
-- `aws-stdout-issue`
-- `k8s-stdout-issue`
-- `gcloud-stdout-issue`
-- `curl-stdout-issue`
-- `curl-headers-stdout-issue`
+**Recommended (with full dynamic issue support):**
+- `aws-cmd` ⭐
+- `azure-cmd` ⭐
+- `gcloud-cmd` ⭐
+- `k8s-kubectl-cmd` ⭐
+- `curl-cmd` ⭐
+- `curl-headers-cmd` ⭐
 - `git-script-cmd-json`
 - `git-script-cmd-env`
+
+**Legacy (simple stdout-based issues only):**
+- `aws-stdout-issue` - For backward compatibility
+- `azure-stdout-issue` - For backward compatibility
+- `k8s-stdout-issue` - For backward compatibility
+- `gcloud-stdout-issue` - For backward compatibility
+- `curl-stdout-issue` - For backward compatibility
+- `curl-headers-stdout-issue` - For backward compatibility
 
 ## Files in This Directory
 

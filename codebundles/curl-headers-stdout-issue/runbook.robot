@@ -1,7 +1,6 @@
 *** Settings ***
-Documentation       Runs an ad-hoc user-provided command, and pushes the command's stdout as the health metric.
-...                 If no output is produced, the resulting metric is empty; if the command produces output, that exact text is used as the metric.
-...                 User commands should produce the desired health metric or numeric value if needed—e.g., output "0" if unhealthy or "1" if healthy.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then an issue is generated with a configurable title and content.
+...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 Metadata            Author    stewartshea
 Metadata            Display Name    cURL CLI Command with Issue and Headers
 Metadata            Supports    cURL
@@ -11,7 +10,6 @@ Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
-Library             RW.DynamicIssues
 
 Suite Setup         Suite Initialization
 
@@ -20,7 +18,7 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Runs a user-provided cURL command. If any headers are provided, appends `-K ./HEADERS`.
     ...                If a post-processing command is provided, it appends `| <post-process>` to the cURL command 
-    ...                before running. Finally, it pushes the command's stdout as the health metric.
+    ...                before running. If stdout is non-empty, creates an issue.
     [Tags]            curl    cli    generic
 
     IF    $HEADERS != ''
@@ -39,31 +37,8 @@ ${TASK_TITLE}
     ${history}=    RW.CLI.Pop Shell History
 
     ${STDOUT}=    Set Variable    ${rsp.stdout}
-    
-    # Check for report.txt and add to report if present
-    ${report_file}=    Set Variable    ${CODEBUNDLE_TEMP_DIR}/report.txt
-    ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file}
-    IF    ${report_exists}
-        ${report_content}=    Get File    ${report_file}
-        RW.Core.Add Pre To Report    ${report_content}
-    END
-    
-    # Method 1: File-based dynamic issue generation (issues.json)
-    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
-    
-    # Method 2: JSON query-based dynamic issue generation
-    ${json_issues_created}=    Set Variable    0
-    IF    """${ISSUE_JSON_QUERY_ENABLED}""" == "true" and """${rsp.stdout}""" != ""
-        ${json_issues_created}=    RW.DynamicIssues.Process Json Query Issues
-        ...    ${rsp.stdout}
-        ...    ${ISSUE_JSON_TRIGGER_KEY}
-        ...    ${ISSUE_JSON_TRIGGER_VALUE}
-        ...    ${ISSUE_JSON_ISSUES_KEY}
-    END
-    
-    # Method 3: Traditional stdout-based issue generation (if enabled)
-    ${total_dynamic_issues}=    Evaluate    ${file_issues_created} + ${json_issues_created}
-    IF    """${rsp.stdout}""" != "" and """${STDOUT_ISSUE_ENABLED}""" == "true"
+
+    IF    """${rsp.stdout}""" != ""
         RW.Core.Add Issue
         ...    title=${ISSUE_TITLE}
         ...    severity=${ISSUE_SEVERITY}
@@ -76,21 +51,11 @@ ${TASK_TITLE}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
-    ELSE IF    """${rsp.stdout}""" == ""
+    ELSE
         RW.Core.Add Pre To Report    No output was returned from the command, indicating no errors were found.
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
-    ELSE
-        # Stdout exists but traditional issue generation is disabled, just add to report
-        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
-    END
-    
-    # Add summary of dynamic issues
-    IF    ${total_dynamic_issues} > 0
-        RW.Core.Add Pre To Report    Dynamic Issue Generation Summary: Created ${file_issues_created} issues from files and ${json_issues_created} issues from JSON queries.
     END
 
 
@@ -151,35 +116,3 @@ Suite Initialization
     ...                 pattern=\w*
     ...                 example=3
     ...                 default=3
-    ${STDOUT_ISSUE_ENABLED}=    RW.Core.Import User Variable    STDOUT_ISSUE_ENABLED
-    ...    type=string
-    ...    description=Enable traditional stdout-based issue generation (true/false). When true, non-empty stdout creates an issue.
-    ...    pattern=\w*
-    ...    example=true
-    ...    default=true
-    ${ISSUE_JSON_QUERY_ENABLED}=    RW.Core.Import User Variable    ISSUE_JSON_QUERY_ENABLED
-    ...    type=string
-    ...    description=Enable JSON query-based issue generation (true/false). When enabled, searches stdout for JSON patterns.
-    ...    pattern=\w*
-    ...    example=false
-    ...    default=false
-    ${ISSUE_JSON_TRIGGER_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_KEY
-    ...    type=string
-    ...    description=JSON key to check for triggering issue generation (e.g., "issuesIdentified" or "storeIssues").
-    ...    pattern=.*
-    ...    example=issuesIdentified
-    ...    default=issuesIdentified
-    ${ISSUE_JSON_TRIGGER_VALUE}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_VALUE
-    ...    type=string
-    ...    description=Value of trigger key that indicates issues should be created (e.g., "true" or "1").
-    ...    pattern=.*
-    ...    example=true
-    ...    default=true
-    ${ISSUE_JSON_ISSUES_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_ISSUES_KEY
-    ...    type=string
-    ...    description=JSON key containing the list of issues to create (e.g., "issues" or "problems").
-    ...    pattern=.*
-    ...    example=issues
-    ...    default=issues
-    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
-    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}

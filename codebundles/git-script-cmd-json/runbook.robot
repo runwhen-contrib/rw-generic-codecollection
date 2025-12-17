@@ -11,6 +11,7 @@ Library             BuiltIn
 Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
+Library             String
 Library             RW.CLI
 Library             Collections
 Library             RW.DynamicIssues
@@ -80,15 +81,25 @@ ${TASK_TITLE}
 
     ${history}=    RW.CLI.Pop Shell History
     
-    # Check for report.txt and add to report if present
-    ${report_file}=    Set Variable    ${CODEBUNDLE_TEMP_DIR}/report.txt
-    ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file}
-    IF    ${report_exists}
-        ${report_content}=    Get File    ${report_file}
-        RW.Core.Add Pre To Report    ${report_content}
+    # Check for report.txt files (searches recursively) and add to report if present
+    ${find_result}=    RW.CLI.Run Cli
+    ...    cmd=find ${CODEBUNDLE_TEMP_DIR} -name "report.txt" -type f 2>/dev/null || true
+    ...    env=${env}
+    ...    secret_file__kubeconfig=${KUBECONFIG}
+    IF    """${find_result.stdout}""" != ""
+        ${report_files}=    Split String    ${find_result.stdout}    \n
+        FOR    ${report_file}    IN    @{report_files}
+            ${report_file_trimmed}=    Strip String    ${report_file}
+            ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file_trimmed}
+            IF    ${report_exists}
+                ${report_content}=    Get File    ${report_file_trimmed}
+                ${relative_path}=    Evaluate    "${report_file_trimmed}".replace("${CODEBUNDLE_TEMP_DIR}/", "")
+                RW.Core.Add Pre To Report    === Report from ${relative_path} ===\n${report_content}
+            END
+        END
     END
     
-    # Method 1: File-based dynamic issue generation (issues.json)
+    # Method 1: File-based dynamic issue generation (issues.json, searches recursively)
     ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
     
     # Method 2: JSON query-based dynamic issue generation (if enabled and configured)

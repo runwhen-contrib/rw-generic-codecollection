@@ -26,7 +26,9 @@ class DynamicIssues:
         """
         Check for issues.json file and create issues from it.
         
-        This method reads issues.json and creates one issue per item.
+        This method searches recursively for issues.json files under temp_dir
+        and creates one issue per item found. This handles cases where users
+        git clone repos and issues.json is in a subdirectory.
         
         Args:
             temp_dir: Directory to search for files (defaults to CODEBUNDLE_TEMP_DIR)
@@ -39,45 +41,53 @@ class DynamicIssues:
         
         issues_created = 0
         
-        # Check for issues.json
-        issues_file = os.path.join(temp_dir, 'issues.json')
-        if os.path.exists(issues_file):
+        # Search recursively for all issues.json files
+        issues_files = []
+        for root, dirs, files in os.walk(temp_dir):
+            if 'issues.json' in files:
+                issues_files.append(os.path.join(root, 'issues.json'))
+        
+        # Process each issues.json file found
+        for issues_file in issues_files:
             try:
                 with open(issues_file, 'r') as f:
                     issues_data = json.load(f)
                     
-                # Handle both list and single object
-                if isinstance(issues_data, dict):
-                    issues_data = [issues_data]
-                
-                for issue in issues_data:
-                    if isinstance(issue, dict):
-                        # Create issue with provided fields or defaults
-                        title = issue.get('title', 'Issue Detected')
-                        severity = issue.get('severity', 3)
-                        expected = issue.get('expected', 'No issues should be present')
-                        actual = issue.get('actual', 'Issue was detected')
-                        reproduce_hint = issue.get('reproduce_hint', 'Review the issue details')
-                        next_steps = issue.get('next_steps', 'Investigate and resolve the issue')
-                        details = issue.get('details', '')
-                        
-                        self.builtin.run_keyword(
-                            'RW.Core.Add Issue',
-                            title=title,
-                            severity=severity,
-                            expected=expected,
-                            actual=actual,
-                            reproduce_hint=reproduce_hint,
-                            next_steps=next_steps,
-                            details=details
-                        )
-                        issues_created += 1
-                        logger.info(f"Created issue: {title}")
+                    # Handle both list and single object
+                    if isinstance(issues_data, dict):
+                        issues_data = [issues_data]
+                    
+                    for issue in issues_data:
+                        if isinstance(issue, dict):
+                            # Create issue with provided fields or defaults
+                            title = issue.get('title', 'Issue Detected')
+                            severity = issue.get('severity', 3)
+                            expected = issue.get('expected', 'No issues should be present')
+                            actual = issue.get('actual', 'Issue was detected')
+                            reproduce_hint = issue.get('reproduce_hint', 'Review the issue details')
+                            next_steps = issue.get('next_steps', 'Investigate and resolve the issue')
+                            details = issue.get('details', '')
+                            
+                            self.builtin.run_keyword(
+                                'RW.Core.Add Issue',
+                                title=title,
+                                severity=severity,
+                                expected=expected,
+                                actual=actual,
+                                reproduce_hint=reproduce_hint,
+                                next_steps=next_steps,
+                                details=details
+                            )
+                            issues_created += 1
+                            logger.info(f"Created issue from {issues_file}: {title}")
                     
             except json.JSONDecodeError as e:
-                logger.warn(f"Failed to parse issues.json: {str(e)}")
+                logger.warn(f"Failed to parse {issues_file}: {str(e)}")
             except Exception as e:
-                logger.warn(f"Failed to process issues.json: {str(e)}")
+                logger.warn(f"Failed to process {issues_file}: {str(e)}")
+        
+        if issues_files:
+            logger.info(f"Processed {len(issues_files)} issues.json file(s), created {issues_created} issue(s)")
         
         return issues_created
     

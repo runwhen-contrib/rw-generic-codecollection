@@ -10,7 +10,6 @@ Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
-Library             RW.DynamicIssues
 
 Suite Setup         Suite Initialization
 
@@ -18,7 +17,6 @@ Suite Setup         Suite Initialization
 *** Tasks ***
 ${TASK_TITLE}
     [Documentation]    Runs a user provided curl command and if the return string is non-empty, it's added to a report and used to raise an issue.
-    ...                Supports multiple dynamic issue generation methods: stdout-based, file-based (issues.json/report.txt), and JSON query-based.
     [Tags]    curl    cli    generic
     IF  '${HEADERS}' != ''
         Set Suite Variable    ${CURL_COMMAND}    ${CURL_COMMAND} -K ./HEADERS
@@ -29,31 +27,7 @@ ${TASK_TITLE}
     ...    secret_file__HEADERS=${HEADERS}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
-    
-    # Check for report.txt and add to report if present
-    ${report_file}=    Set Variable    ${CODEBUNDLE_TEMP_DIR}/report.txt
-    ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file}
-    IF    ${report_exists}
-        ${report_content}=    Get File    ${report_file}
-        RW.Core.Add Pre To Report    ${report_content}
-    END
-    
-    # Method 1: File-based dynamic issue generation (issues.json)
-    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
-    
-    # Method 2: JSON query-based dynamic issue generation
-    ${json_issues_created}=    Set Variable    0
-    IF    """${ISSUE_JSON_QUERY_ENABLED}""" == "true" and """${rsp.stdout}""" != ""
-        ${json_issues_created}=    RW.DynamicIssues.Process Json Query Issues
-        ...    ${rsp.stdout}
-        ...    ${ISSUE_JSON_TRIGGER_KEY}
-        ...    ${ISSUE_JSON_TRIGGER_VALUE}
-        ...    ${ISSUE_JSON_ISSUES_KEY}
-    END
-    
-    # Method 3: Traditional stdout-based issue generation (if enabled)
-    ${total_dynamic_issues}=    Evaluate    ${file_issues_created} + ${json_issues_created}
-    IF    """${rsp.stdout}""" != "" and """${STDOUT_ISSUE_ENABLED}""" == "true"
+    IF    """${rsp.stdout}""" != ""
         RW.Core.Add Issue
         ...    title=${ISSUE_TITLE}
         ...    severity=${ISSUE_SEVERITY}
@@ -65,21 +39,12 @@ ${TASK_TITLE}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
-    ELSE IF    """${rsp.stdout}""" == ""
+
+    ELSE
         RW.Core.Add Pre To Report    No output was returned from the command, indicating no errors were found.
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
-    ELSE
-        # Stdout exists but traditional issue generation is disabled, just add to report
-        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
-    END
-    
-    # Add summary of dynamic issues
-    IF    ${total_dynamic_issues} > 0
-        RW.Core.Add Pre To Report    Dynamic Issue Generation Summary: Created ${file_issues_created} issues from files and ${json_issues_created} issues from JSON queries.
     END
 
 
@@ -124,36 +89,3 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=3
     ...    default=3
-    ${STDOUT_ISSUE_ENABLED}=    RW.Core.Import User Variable    STDOUT_ISSUE_ENABLED
-    ...    type=string
-    ...    description=Enable traditional stdout-based issue generation (true/false). When true, non-empty stdout creates an issue.
-    ...    pattern=\w*
-    ...    example=true
-    ...    default=true
-    ${ISSUE_JSON_QUERY_ENABLED}=    RW.Core.Import User Variable    ISSUE_JSON_QUERY_ENABLED
-    ...    type=string
-    ...    description=Enable JSON query-based issue generation (true/false). When enabled, searches stdout for JSON patterns.
-    ...    pattern=\w*
-    ...    example=false
-    ...    default=false
-    ${ISSUE_JSON_TRIGGER_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_KEY
-    ...    type=string
-    ...    description=JSON key to check for triggering issue generation (e.g., "issuesIdentified" or "storeIssues").
-    ...    pattern=.*
-    ...    example=issuesIdentified
-    ...    default=issuesIdentified
-    ${ISSUE_JSON_TRIGGER_VALUE}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_VALUE
-    ...    type=string
-    ...    description=Value of trigger key that indicates issues should be created (e.g., "true" or "1").
-    ...    pattern=.*
-    ...    example=true
-    ...    default=true
-    ${ISSUE_JSON_ISSUES_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_ISSUES_KEY
-    ...    type=string
-    ...    description=JSON key containing the list of issues to create (e.g., "issues" or "problems").
-    ...    pattern=.*
-    ...    example=issues
-    ...    default=issues
-    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
-    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
-
