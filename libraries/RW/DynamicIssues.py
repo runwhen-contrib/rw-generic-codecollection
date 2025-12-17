@@ -70,13 +70,13 @@ class DynamicIssues:
                             
                             self.builtin.run_keyword(
                                 'RW.Core.Add Issue',
-                                title=title,
-                                severity=severity,
-                                expected=expected,
-                                actual=actual,
-                                reproduce_hint=reproduce_hint,
-                                next_steps=next_steps,
-                                details=details
+                                f'title={title}',
+                                f'severity={severity}',
+                                f'expected={expected}',
+                                f'actual={actual}',
+                                f'reproduce_hint={reproduce_hint}',
+                                f'next_steps={next_steps}',
+                                f'details={details}'
                             )
                             issues_created += 1
                             logger.info(f"Created issue from {issues_file}: {title}")
@@ -150,13 +150,13 @@ class DynamicIssues:
                                 
                                 self.builtin.run_keyword(
                                     'RW.Core.Add Issue',
-                                    title=title,
-                                    severity=severity,
-                                    expected=expected,
-                                    actual=actual,
-                                    reproduce_hint=reproduce_hint,
-                                    next_steps=next_steps,
-                                    details=details
+                                    f'title={title}',
+                                    f'severity={severity}',
+                                    f'expected={expected}',
+                                    f'actual={actual}',
+                                    f'reproduce_hint={reproduce_hint}',
+                                    f'next_steps={next_steps}',
+                                    f'details={details}'
                                 )
                                 issues_created += 1
                                 logger.info(f"Created issue from JSON query: {title}")
