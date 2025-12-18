@@ -44,8 +44,9 @@ ${TASK_TITLE}
     END
     
     # Add additional secrets from JSON (only if JSON is provided)
-    IF    $ADDITIONAL_SECRETS != '' and $ADDITIONAL_SECRETS.value != ""
-        ${additional_env}=    Evaluate    json.loads(open('./${ADDITIONAL_SECRETS.key}').read())    json
+    ${has_additional_secrets}=    Run Keyword And Return Status    Variable Should Exist    ${ADDITIONAL_SECRETS.value}
+    IF    ${has_additional_secrets} and $ADDITIONAL_SECRETS.value != ""
+        ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
         FOR    ${key}    ${value}    IN    &{additional_env}
             ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
         END
