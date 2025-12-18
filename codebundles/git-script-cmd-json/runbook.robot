@@ -11,8 +11,10 @@ Library             BuiltIn
 Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
+Library             String
 Library             RW.CLI
 Library             Collections
+Library             RW.DynamicIssues
 
 Suite Setup         Suite Initialization
 
@@ -78,10 +80,45 @@ ${TASK_TITLE}
     ...        timeout_seconds=${TIMEOUT_SECONDS}
 
     ${history}=    RW.CLI.Pop Shell History
+    
+    # Check for report.txt files (searches recursively) and add to report if present
+    ${find_result}=    RW.CLI.Run Cli
+    ...    cmd=find ${CODEBUNDLE_TEMP_DIR} -name "report.txt" -type f 2>/dev/null || true
+    IF    """${find_result.stdout}""" != ""
+        ${report_files}=    Split String    ${find_result.stdout}    \n
+        FOR    ${report_file}    IN    @{report_files}
+            ${report_file_trimmed}=    Strip String    ${report_file}
+            ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file_trimmed}
+            IF    ${report_exists}
+                ${report_content}=    Get File    ${report_file_trimmed}
+                ${relative_path}=    Replace String    ${report_file_trimmed}    ${CODEBUNDLE_TEMP_DIR}/    ${EMPTY}
+                RW.Core.Add Pre To Report    === Report from ${relative_path} ===\n${report_content}
+            END
+        END
+    END
+    
+    # Method 1: File-based dynamic issue generation (issues.json, searches recursively)
+    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
+    
+    # Method 2: JSON query-based dynamic issue generation (if enabled and configured)
+    ${json_issues_created}=    Set Variable    0
+    IF    """${ISSUE_JSON_QUERY_ENABLED}""" == "true" and """${rsp.stdout}""" != ""
+        ${json_issues_created}=    RW.DynamicIssues.Process Json Query Issues
+        ...    ${rsp.stdout}
+        ...    ${ISSUE_JSON_TRIGGER_KEY}
+        ...    ${ISSUE_JSON_TRIGGER_VALUE}
+        ...    ${ISSUE_JSON_ISSUES_KEY}
+    END
 
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
     RW.Core.Add Pre To Report    Commands Used: ${history}
+    
+    # Add summary of dynamic issues
+    ${total_dynamic_issues}=    Evaluate    ${file_issues_created} + ${json_issues_created}
+    IF    ${total_dynamic_issues} > 0
+        RW.Core.Add Pre To Report    Dynamic Issue Generation Summary: Created ${file_issues_created} issues from files and ${json_issues_created} issues from JSON queries.
+    END
 
 
 *** Keywords ***
@@ -92,7 +129,6 @@ Suite Initialization
     ...    description=SSH private key for git repository access (optional)
     ...    pattern=.*
     ...    example=-----BEGIN OPENSSH PRIVATE KEY-----\nkey_content_here\n-----END OPENSSH PRIVATE KEY-----
-    ...    default=""
     ...    optional=True
     
     # Import optional git HTTPS credentials
@@ -101,7 +137,6 @@ Suite Initialization
     ...    description=Git username for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=myusername
-    ...    default=""
     ...    optional=True
     
     ${GIT_TOKEN}=    RW.Core.Import Secret    GIT_TOKEN
@@ -109,7 +144,6 @@ Suite Initialization
     ...    description=Git token/password for HTTPS authentication (optional)
     ...    pattern=.*
     ...    example=ghp_xxxxxxxxxxxxxxxxxxxx
-    ...    default=""
     ...    optional=True
     
     # Import additional secrets as JSON
@@ -118,7 +152,6 @@ Suite Initialization
     ...    description=Additional secrets as JSON object to be loaded as environment variables (optional)
     ...    pattern=.*
     ...    example={"DATABASE_URL":"postgres://...", "API_KEY":"secret123", "SLACK_TOKEN":"xoxb-..."}
-    ...    default=""
     ...    optional=True
     
     # Import optional kubeconfig for Kubernetes operations
@@ -150,8 +183,37 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=1800
     ...    default=1800
+    
+    # Dynamic Issue Generation Configuration
+    ${ISSUE_JSON_QUERY_ENABLED}=    RW.Core.Import User Variable    ISSUE_JSON_QUERY_ENABLED
+    ...    type=string
+    ...    description=Enable JSON query-based issue generation (true/false). Searches stdout for JSON patterns to create issues.
+    ...    pattern=\w*
+    ...    example=true
+    ...    default=false
+    ${ISSUE_JSON_TRIGGER_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_KEY
+    ...    type=string
+    ...    description=JSON key to check for triggering issue generation (e.g., "issuesIdentified", "storeIssues", "hasErrors").
+    ...    pattern=.*
+    ...    example=issuesIdentified
+    ...    default=issuesIdentified
+    ${ISSUE_JSON_TRIGGER_VALUE}=    RW.Core.Import User Variable    ISSUE_JSON_TRIGGER_VALUE
+    ...    type=string
+    ...    description=Value of trigger key that indicates issues should be created (e.g., "true", "yes", or "1").
+    ...    pattern=.*
+    ...    example=true
+    ...    default=true
+    ${ISSUE_JSON_ISSUES_KEY}=    RW.Core.Import User Variable    ISSUE_JSON_ISSUES_KEY
+    ...    type=string
+    ...    description=JSON key containing the list of issues to create (e.g., "issues", "problems", "errors").
+    ...    pattern=.*
+    ...    example=issues
+    ...    default=issues
+    
+    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
 
     # Set suite variables
+    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${GIT_USERNAME}
     Set Suite Variable    ${GIT_TOKEN}
@@ -160,3 +222,7 @@ Suite Initialization
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE} 
     Set Suite Variable    ${TIMEOUT_SECONDS}
+    Set Suite Variable    ${ISSUE_JSON_QUERY_ENABLED}
+    Set Suite Variable    ${ISSUE_JSON_TRIGGER_KEY}
+    Set Suite Variable    ${ISSUE_JSON_TRIGGER_VALUE}
+    Set Suite Variable    ${ISSUE_JSON_ISSUES_KEY}

@@ -22,8 +22,8 @@ ${TASK_TITLE}
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
     ...    timeout_seconds=${TIMEOUT_SECONDS}
+    ...    env=${env}
     ${history}=    RW.CLI.Pop Shell History
-    ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
         RW.Core.Add Issue
         ...    title=${ISSUE_TITLE}
@@ -32,7 +32,7 @@ ${TASK_TITLE}
         ...    actual=Found stdout output produced by the configured command, indicating errors were found.
         ...    reproduce_hint=Run ${AZURE_COMMAND} to fetch the data that triggered this issue.
         ...    next_steps=${ISSUE_NEXT_STEPS}
-        ...    details=${ISSUE_DETAILS}
+        ...    details=${ISSUE_DETAILS}\n${rsp.stdout}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
         RW.Core.Add Pre To Report    Commands Used: ${history}
@@ -74,10 +74,10 @@ Suite Initialization
     ...    default="Review the command output and take appropriate action."
     ${ISSUE_DETAILS}=    RW.Core.Import User Variable    ISSUE_DETAILS
     ...    type=string
-    ...    description=The details of the issue to raise if the command returns a non-empty string.
+    ...    description=The details of the issue to raise if the command returns a non-empty string. STDOUT will automatically be added to the issue details. 
     ...    pattern=\w*
-    ...    example="The command returned the following output, indicating errors: \${STDOUT}"
-    ...    default="The command returned the following output, indicating errors: \${STDOUT}"
+    ...    example="The command returned the following output: "
+    ...    default="The command returned the following output: "
     ${ISSUE_SEVERITY}=    RW.Core.Import User Variable    ISSUE_SEVERITY
     ...    type=string
     ...    description=An integer severity rating for the issue if raised, where 1 is critical, and 4 is informational.
@@ -90,4 +90,14 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=300
     ...    default=300
-
+    ${OS_PATH}=    Get Environment Variable    PATH
+    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
+    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
+    Set Suite Variable
+    ...    ${env}
+    ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}","TERM":"dumb","NO_COLOR":"1"}
+    ${powershell_auth}=     RW.CLI.Run Cli
+    ...    cmd=pwsh -NoLogo -NoProfile -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue 2>&1 | Out-Null; Import-Module Az.Accounts; \\$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \\$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \\$token -AccountId \\$account.user.name -TenantId \\$account.tenantId -SubscriptionId \\$account.id | Out-Null"
+    ...    timeout_seconds=30
+    ...    env=${env}
+    ...    include_in_history=false

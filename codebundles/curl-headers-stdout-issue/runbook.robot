@@ -1,7 +1,6 @@
 *** Settings ***
-Documentation       Runs an ad-hoc user-provided command, and pushes the command's stdout as the health metric.
-...                 If no output is produced, the resulting metric is empty; if the command produces output, that exact text is used as the metric.
-...                 User commands should produce the desired health metric or numeric value if needed—e.g., output "0" if unhealthy or "1" if healthy.
+Documentation       Runs an ad-hoc user-provided command, and if the provided command outputs a non-empty string to stdout then an issue is generated with a configurable title and content.
+...                 User commands should filter expected/healthy content (eg: with grep) and only output found errors.
 Metadata            Author    stewartshea
 Metadata            Display Name    cURL CLI Command with Issue and Headers
 Metadata            Supports    cURL
@@ -19,7 +18,7 @@ Suite Setup         Suite Initialization
 ${TASK_TITLE}
     [Documentation]    Runs a user-provided cURL command. If any headers are provided, appends `-K ./HEADERS`.
     ...                If a post-processing command is provided, it appends `| <post-process>` to the cURL command 
-    ...                before running. Finally, it pushes the command's stdout as the health metric.
+    ...                before running. If stdout is non-empty, creates an issue.
     [Tags]            curl    cli    generic
 
     IF    $HEADERS != ''

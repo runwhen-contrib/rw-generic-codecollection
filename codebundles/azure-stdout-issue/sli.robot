@@ -23,6 +23,7 @@ ${TASK_TITLE}
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${AZURE_COMMAND}
     ...    timeout_seconds=${TIMEOUT_SECONDS}
+    ...    env=${env}
     ${history}=    RW.CLI.Pop Shell History
     ${STDOUT}=    Set Variable    ${rsp.stdout}
     IF    """${rsp.stdout}""" != ""
@@ -38,6 +39,7 @@ Suite Initialization
     ...    type=string
     ...    description=The secret containing AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET, AZURE_SUBSCRIPTION_ID
     ...    pattern=\w*
+
     ${AZURE_COMMAND}=    RW.Core.Import User Variable    AZURE_COMMAND
     ...    type=string
     ...    description=The az cli command to run. Can use tools like jq.
@@ -54,3 +56,14 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=60
     ...    default=60
+    ${OS_PATH}=    Get Environment Variable    PATH
+    ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
+    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
+    Set Suite Variable
+    ...    ${env}
+    ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}","TERM":"dumb","NO_COLOR":"1"}
+    ${powershell_auth}=     RW.CLI.Run Cli
+    ...    cmd=pwsh -NoLogo -NoProfile -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue 2>&1 | Out-Null; Import-Module Az.Accounts; \\$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \\$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \\$token -AccountId \\$account.user.name -TenantId \\$account.tenantId -SubscriptionId \\$account.id | Out-Null"
+    ...    timeout_seconds=30
+    ...    env=${env}
+    ...    include_in_history=false

@@ -89,4 +89,3 @@ Suite Initialization
     ...    pattern=\w*
     ...    example=3
     ...    default=3
-
