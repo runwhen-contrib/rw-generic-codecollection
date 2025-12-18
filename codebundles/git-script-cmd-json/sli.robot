@@ -31,38 +31,55 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Build export commands for all secrets (reading from secure files)
-    ${env_exports}=    Set Variable    ""
+    ${env_exports}=    Set Variable    ${EMPTY}
     
     # Add Git credentials as exports (only if they have values)
-    IF    $GIT_USERNAME != '' and $GIT_USERNAME.value != ""
-        ${env_exports}=    Set Variable    ${env_exports}export GIT_USERNAME="$(cat ./${GIT_USERNAME.key})" && 
+    TRY
+        IF    $GIT_USERNAME.value != ""
+            ${env_exports}=    Set Variable    ${env_exports}export GIT_USERNAME="$(cat ./${GIT_USERNAME.key})" && 
+        END
+    EXCEPT
+        Log    GIT_USERNAME not provided, skipping    DEBUG
     END
-    IF    $GIT_TOKEN != '' and $GIT_TOKEN.value != ""
-        ${env_exports}=    Set Variable    ${env_exports}export GIT_TOKEN="$(cat ./${GIT_TOKEN.key})" && 
+    TRY
+        IF    $GIT_TOKEN.value != ""
+            ${env_exports}=    Set Variable    ${env_exports}export GIT_TOKEN="$(cat ./${GIT_TOKEN.key})" && 
+        END
+    EXCEPT
+        Log    GIT_TOKEN not provided, skipping    DEBUG
     END
     
     # Add additional secrets from JSON (only if JSON is provided)
-    ${has_additional_secrets}=    Run Keyword And Return Status    Variable Should Exist    ${ADDITIONAL_SECRETS.value}
-    IF    ${has_additional_secrets} and $ADDITIONAL_SECRETS.value != ""
-        ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
-        FOR    ${key}    ${value}    IN    &{additional_env}
-            ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
+    TRY
+        IF    $ADDITIONAL_SECRETS.value != ""
+            ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
+            FOR    ${key}    ${value}    IN    &{additional_env}
+                ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
+            END
         END
+    EXCEPT
+        Log    ADDITIONAL_SECRETS not provided, skipping    DEBUG
     END
     
     # Setup KUBECONFIG if provided
-    IF    $kubeconfig != ''
+    TRY
         Set To Dictionary    ${env_dict}    KUBECONFIG=./${kubeconfig.key}
+    EXCEPT
+        Log    kubeconfig not provided, skipping    DEBUG
     END
     
     # Setup SSH if provided (reading from secure file)
-    ${ssh_setup}=    Set Variable    ""
-    IF    $SSH_PRIVATE_KEY != '' and $SSH_PRIVATE_KEY.value != ""
-        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+    ${ssh_setup}=    Set Variable    ${EMPTY}
+    TRY
+        IF    $SSH_PRIVATE_KEY.value != ""
+            ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+        END
+    EXCEPT
+        Log    SSH_PRIVATE_KEY not provided, skipping    DEBUG
     END
     
     # Build command parts explicitly to avoid concatenation issues
-    IF   ${env_exports} == ""
+    IF   $env_exports == ""
         ${full_command}=    Set Variable    ${ssh_setup}${SCRIPT_COMMAND}
     ELSE
         ${full_command}=    Set Variable    ${ssh_setup}${env_exports}${SCRIPT_COMMAND}
