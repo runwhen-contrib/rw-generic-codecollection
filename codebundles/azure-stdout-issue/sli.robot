@@ -58,10 +58,12 @@ Suite Initialization
     ...    default=60
     ${OS_PATH}=    Get Environment Variable    PATH
     ${CODEBUNDLE_TEMP_DIR}=    Get Environment Variable    CODEBUNDLE_TEMP_DIR
+    Set Suite Variable    ${CODEBUNDLE_TEMP_DIR}
     Set Suite Variable
     ...    ${env}
     ...    {"HOME":"${CODEBUNDLE_TEMP_DIR}","PATH":"$PATH:${OS_PATH}","TERM":"dumb","NO_COLOR":"1"}
     ${powershell_auth}=     RW.CLI.Run Cli
     ...    cmd=pwsh -NoLogo -NoProfile -Command "Install-Module Az.Accounts -Scope CurrentUser -Force -ErrorAction SilentlyContinue 2>&1 | Out-Null; Import-Module Az.Accounts; \\$token = (az account get-access-token --output json | ConvertFrom-Json).accessToken; \\$account = az account show --output json | ConvertFrom-Json; Connect-AzAccount -AccessToken \\$token -AccountId \\$account.user.name -TenantId \\$account.tenantId -SubscriptionId \\$account.id | Out-Null"
     ...    timeout_seconds=30
+    ...    env=${env}
     ...    include_in_history=false

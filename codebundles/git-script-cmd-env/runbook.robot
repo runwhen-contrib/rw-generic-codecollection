@@ -141,6 +141,17 @@ ${TASK_TITLE}
         RW.Core.Add Pre To Report    Dynamic Issue Generation Summary: Created ${file_issues_created} issues from files and ${json_issues_created} issues from JSON queries.
     END
     
+    # Method 3: Traditional return code-based issue generation (if enabled)
+    IF    ${rsp.returncode} != 0 and """${RETURNCODE_ISSUE_ENABLED}""" == "true"
+        RW.Core.Add Issue
+        ...    severity=2
+        ...    expected=Script command should execute successfully
+        ...    actual=Script command failed with return code ${rsp.returncode}
+        ...    title=Script Execution Failed
+        ...    reproduce_hint=Check the script command and environment variables. Verify SSH key and repository access if using Git operations.
+        ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
+        ...    next_steps=1. Verify the SCRIPT_COMMAND syntax is correct\n2. Check that all required environment variables are set with valid values\n3. If using SSH, ensure SSH_PRIVATE_KEY is valid and has access to the repository\n4. Test the script command locally to isolate the issue\n5. Check repository URL and access permissions
+    END
 
 
 *** Keywords ***
