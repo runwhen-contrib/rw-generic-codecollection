@@ -34,15 +34,15 @@ ${TASK_TITLE}
     ${env_exports}=    Set Variable    ""
     
     # Add Git credentials as exports (only if they have values)
-    IF    $GIT_USERNAME.value != ""
+    IF    $GIT_USERNAME != '' and $GIT_USERNAME.value != ""
         ${env_exports}=    Set Variable    ${env_exports}export GIT_USERNAME="$(cat ./${GIT_USERNAME.key})" && 
     END
-    IF    $GIT_TOKEN.value != ""
+    IF    $GIT_TOKEN != '' and $GIT_TOKEN.value != ""
         ${env_exports}=    Set Variable    ${env_exports}export GIT_TOKEN="$(cat ./${GIT_TOKEN.key})" && 
     END
     
     # Add additional secrets from JSON (only if JSON is provided)
-    IF    $ADDITIONAL_SECRETS.value != ""
+    IF    $ADDITIONAL_SECRETS != '' and $ADDITIONAL_SECRETS.value != ""
         ${additional_env}=    Evaluate    json.loads(open('./${ADDITIONAL_SECRETS.key}').read())    json
         FOR    ${key}    ${value}    IN    &{additional_env}
             ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
@@ -56,7 +56,7 @@ ${TASK_TITLE}
     
     # Setup SSH if provided (reading from secure file)
     ${ssh_setup}=    Set Variable    ""
-    IF    $SSH_PRIVATE_KEY.value != ""
+    IF    $SSH_PRIVATE_KEY != '' and $SSH_PRIVATE_KEY.value != ""
         ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
     END
     
