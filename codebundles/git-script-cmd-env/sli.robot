@@ -29,7 +29,7 @@ ${TASK_TITLE}
     Set To Dictionary    ${env_dict}    PATH=${OS_PATH}
     
     # Build export commands for environment variables (reading from secure files)
-    ${env_exports}=    Set Variable    ""
+    ${env_exports}=    Set Variable    ${EMPTY}
     IF    $ENV_VAR_1_NAME != "" and $ENV_VAR_1_VALUE.value != ""
         ${env_exports}=    Set Variable    ${env_exports}export ${ENV_VAR_1_NAME}="$(cat ./${ENV_VAR_1_VALUE.key})" && 
     END
@@ -62,14 +62,20 @@ ${TASK_TITLE}
     END
     
     # Setup KUBECONFIG if provided
-    IF    $kubeconfig != ''
+    TRY
         Set To Dictionary    ${env_dict}    KUBECONFIG=./${kubeconfig.key}
+    EXCEPT
+        Log    kubeconfig not provided, skipping    DEBUG
     END
     
     # Setup SSH if provided (using secure file approach)
-    ${ssh_setup}=    Set Variable    ""
-    IF    $SSH_PRIVATE_KEY.value != ""
-        ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+    ${ssh_setup}=    Set Variable    ${EMPTY}
+    TRY
+        IF    $SSH_PRIVATE_KEY.value != ""
+            ${ssh_setup}=    Set Variable    chmod 600 ./${SSH_PRIVATE_KEY.key} && export GIT_SSH_COMMAND='ssh -i ./${SSH_PRIVATE_KEY.key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' &&
+        END
+    EXCEPT
+        Log    SSH_PRIVATE_KEY not provided, skipping    DEBUG
     END
     
     # Build command parts explicitly to avoid concatenation issues
