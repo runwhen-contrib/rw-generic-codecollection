@@ -38,7 +38,7 @@ ${TASK_TITLE}
             ${report_exists}=    Run Keyword And Return Status    File Should Exist    ${report_file_trimmed}
             IF    ${report_exists}
                 ${report_content}=    Get File    ${report_file_trimmed}
-                ${relative_path}=    Evaluate    "${report_file_trimmed}".replace("${CODEBUNDLE_TEMP_DIR}/", "")
+                ${relative_path}=    Replace String    ${report_file_trimmed}    ${CODEBUNDLE_TEMP_DIR}/    ${EMPTY}
                 RW.Core.Add Pre To Report    === Report from ${relative_path} ===\n${report_content}
             END
         END
