@@ -1,8 +1,8 @@
 *** Settings ***
-Documentation       Gen Taskset
+Documentation       A CodeBundle that supports the generics editor in the RunWhen UI for bash and pythong scripts. 
 Metadata            Author    theyashl
-Metadata            Display Name    Gen Taskset
-Metadata            Supports    bash
+Metadata            Display Name    Generics Editor (BASH/PYTHON)
+Metadata            Supports    bash    python    RunWhen    Generic
 
 Library             BuiltIn
 Library             RW.Core
@@ -16,7 +16,7 @@ Suite Setup         Suite Initialization
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Runs a user provided bash command and adds the output to the report.
+    [Documentation]    Executes a user provided bash or python script. 
     [Tags]    bash    cli    generic
     
     ${secret_kwargs}=    Create Dictionary
@@ -89,7 +89,7 @@ Suite Initialization
     ...    example="ZWNobyAnSGVsbG8gV29ybGQn"
     ${TASK_TITLE}=    RW.Core.Import User Variable    TASK_TITLE
     ...    type=string
-    ...    description=The name of the task to run. This is useful for helping find this generic task with RunWhen Digital Assistants. 
+    ...    description=A useful task title. This is useful for helping find this generic task with RunWhen Assistants. 
     ...    pattern=\w*
     ...    example="Run a bash command"
 
