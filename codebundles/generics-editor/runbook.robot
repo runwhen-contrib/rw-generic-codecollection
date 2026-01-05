@@ -62,7 +62,7 @@ ${TASK_TITLE}
     File Should Exist    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/issues_data.json
     
     ${issues_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/issues_data.json
-    ${issues}=    Evaluate    json.load(open(r'''${ISSUES_FILE}'''))    json
+    ${issues}=    Evaluate    json.load(open(r'''${issues_file}''')) if os.path.exists(r'''${issues_file}''') and os.path.getsize(r'''${issues_file}''') > 0 else []    modules=json,os
 
     FOR    ${issue}    IN    @{issues}
         RW.Core.Add Issue
@@ -116,8 +116,8 @@ Suite Initialization
     ${secrets_json}=    RW.Core.Import User Variable    SECRET_ENV_MAP
     ...    type=string
     ...    description="JSON string of environment variables to secrets"
-    ...    example="{"env_name": "secret_name"}"
-    ${raw_secrets}=     Evaluate    json.loads('${secrets_json}' if '${secrets_json}' not in ['null', '', 'None'] else '{}')    modules=json
+    ...    example="['env_name']"
+    ${raw_secrets}=     Evaluate    json.loads('${secrets_json}' if '${secrets_json}' not in ['null', '', 'None'] else '[]')    modules=json
 
     ${secret_objs}=    Create Dictionary
     FOR    ${env_name}    IN    @{raw_secrets}
