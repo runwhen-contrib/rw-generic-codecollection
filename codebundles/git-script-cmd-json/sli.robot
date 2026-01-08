@@ -204,6 +204,13 @@ Suite Initialization
     ...    example=120
     ...    default=120
 
+    ${METRIC_MODE}=    RW.Core.Import User Variable    METRIC_MODE
+    ...    type=string
+    ...    description=How to determine the metric value: 'returncode' (1 for success, 0 for failure) or 'output' (parse metric from stdout). Default is 'returncode'.
+    ...    pattern=^(returncode|output)$
+    ...    example=returncode
+    ...    default=returncode
+
     # Set suite variables
     Set Suite Variable    ${SSH_PRIVATE_KEY}
     Set Suite Variable    ${GIT_USERNAME}
@@ -213,3 +220,4 @@ Suite Initialization
     Set Suite Variable    ${SCRIPT_COMMAND}
     Set Suite Variable    ${TASK_TITLE}
     Set Suite Variable    ${TIMEOUT_SECONDS}
+    Set Suite Variable    ${METRIC_MODE}
