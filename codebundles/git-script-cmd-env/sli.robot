@@ -13,6 +13,7 @@ Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
 Library             Collections
+Library             String
 
 Suite Setup         Suite Initialization
 
@@ -111,41 +112,12 @@ ${TASK_TITLE}
         TRY
             ${metric_value}=    Convert To Number    ${metric_value}
         EXCEPT
-            RW.Core.Add Issue
-            ...    severity=2
-            ...    expected=Script output should be a numeric value when METRIC_MODE=output
-            ...    actual=Script output is not a valid number: ${metric_value}
-            ...    title=Invalid Metric Output
-            ...    reproduce_hint=When METRIC_MODE=output, the script stdout must output a single numeric value.
-            ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
-            ...    next_steps=1. Ensure your script outputs only a numeric value to stdout\n2. Use tools like 'jq' or 'grep' to extract numeric values from complex output\n3. Consider using METRIC_MODE=returncode if you cannot output a numeric value
+            # If output is not numeric, default to 0
             ${metric_value}=    Set Variable    0
-        END
-        # Still add issue if command failed, but use the output value
-        IF    ${rsp.returncode} != 0
-            RW.Core.Add Issue
-            ...    severity=2
-            ...    expected=Script command should execute successfully
-            ...    actual=Script command failed with return code ${rsp.returncode}
-            ...    title=Script Execution Failed
-            ...    reproduce_hint=Check the script command and environment variables. Verify SSH key and repository access if using Git operations.
-            ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
-            ...    next_steps=1. Verify the SCRIPT_COMMAND syntax is correct\n2. Check that all required environment variables are set with valid values\n3. If using SSH, ensure SSH_PRIVATE_KEY is valid and has access to the repository\n4. If using HTTPS, verify GIT_USERNAME and GIT_TOKEN are correct\n5. Test the script command locally to isolate the issue\n6. Check repository URL and access permissions
         END
     ELSE
         # Default: Push 1 for success (healthy), 0 for failure (unhealthy)
         ${metric_value}=    Set Variable If    ${rsp.returncode} == 0    1    0
-        
-        IF    ${rsp.returncode} != 0
-            RW.Core.Add Issue
-            ...    severity=2
-            ...    expected=Script command should execute successfully
-            ...    actual=Script command failed with return code ${rsp.returncode}
-            ...    title=Script Execution Failed
-            ...    reproduce_hint=Check the script command and environment variables. Verify SSH key and repository access if using Git operations.
-            ...    details=Command: ${SCRIPT_COMMAND}${\n}Return Code: ${rsp.returncode}${\n}Stdout: ${rsp.stdout}${\n}Stderr: ${rsp.stderr}
-            ...    next_steps=1. Verify the SCRIPT_COMMAND syntax is correct\n2. Check that all required environment variables are set with valid values\n3. If using SSH, ensure SSH_PRIVATE_KEY is valid and has access to the repository\n4. If using HTTPS, verify GIT_USERNAME and GIT_TOKEN are correct\n5. Test the script command locally to isolate the issue\n6. Check repository URL and access permissions
-        END
     END
     RW.Core.Push Metric    ${metric_value}
 
