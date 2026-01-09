@@ -70,7 +70,7 @@ ${TASK_TITLE}
         ...    severity=${issue['issue severity']}
         ...    expected=The script should produce no issues, indicating no errors were found.
         ...    actual=Found issues output produced by the provided script, indicating errors were found.
-        ...    reproduce_hint=Run ${command} to fetch the data that triggered this issue.
+        ...    reproduce_hint=look at the SLX description for more details.
         ...    next_steps=${issue['issue next steps']}
         ...    details=${issue['issue description']}
     END
