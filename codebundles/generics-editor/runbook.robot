@@ -73,6 +73,7 @@ ${TASK_TITLE}
             ...    reproduce_hint=look at the SLX description for more details.
             ...    next_steps=${issue['issue next steps']}
             ...    details=${issue['issue description']}
+            ...    observed_at=${issue.get('issue observed at', None)}
         END
     END
 
