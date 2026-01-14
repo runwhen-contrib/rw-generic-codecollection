@@ -34,7 +34,7 @@ ${TASK_TITLE}
     ...    ${decode_op.stdout}
     ...    import json, os
     ...    resp = main()
-    ...    path = os.path.join(os.environ["CODEBUNDLE_TEMP_DIR"], "issues_data.json")
+    ...    path = os.path.join(os.environ["CODEBUNDLE_TEMP_DIR"], "run_output.json")
     ...    f = open(path, "w", encoding="utf-8")
     ...    json.dump(resp, f)
     ...    f.close()
@@ -43,7 +43,7 @@ ${TASK_TITLE}
     ...    Catenate    SEPARATOR=\n
     ...    bash << 'EOF'
     ...    ${decode_op.stdout}
-    ...    ISSUES_FILE="$CODEBUNDLE_TEMP_DIR/issues_data.json"
+    ...    ISSUES_FILE="$CODEBUNDLE_TEMP_DIR/run_output.json"
     ...    exec 3> "$ISSUES_FILE"
     ...    main
     ...    exec 3>&-
@@ -55,29 +55,37 @@ ${TASK_TITLE}
     ...    &{secret_kwargs}
 
     ${history}=    RW.CLI.Pop Shell History
-    RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
+    
+    ${run_output_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/run_output.json
+    ${run_output}=    Evaluate    json.load(open(r'''${run_output_file}''')) if os.path.exists(r'''${run_output_file}''') and os.path.getsize(r'''${run_output_file}''') > 0 else []    modules=json,os
+
+    IF    $RUN_TYPE == 'sli'
+        ${msg}=    Catenate    SEPARATOR=\n    Command stdout: ${rsp.stdout}    Reported Metric: ${run_output}
+        RW.Core.Add Pre To Report    ${msg}
+    ELSE
+        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
+        FOR    ${issue}    IN    @{run_output}
+            RW.Core.Add Issue
+            ...    title=${issue['issue title']}
+            ...    severity=${issue['issue severity']}
+            ...    expected=The script should produce no issues, indicating no errors were found.
+            ...    actual=Found issues output produced by the provided script, indicating errors were found.
+            ...    reproduce_hint=look at the SLX description for more details.
+            ...    next_steps=${issue['issue next steps']}
+            ...    details=${issue['issue description']}
+        END
+    END
+
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
     RW.Core.Add Pre To Report    Commands Used: ${history}
-
-    File Should Exist    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/issues_data.json
-    
-    ${issues_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/issues_data.json
-    ${issues}=    Evaluate    json.load(open(r'''${issues_file}''')) if os.path.exists(r'''${issues_file}''') and os.path.getsize(r'''${issues_file}''') > 0 else []    modules=json,os
-
-    FOR    ${issue}    IN    @{issues}
-        RW.Core.Add Issue
-        ...    title=${issue['issue title']}
-        ...    severity=${issue['issue severity']}
-        ...    expected=The script should produce no issues, indicating no errors were found.
-        ...    actual=Found issues output produced by the provided script, indicating errors were found.
-        ...    reproduce_hint=look at the SLX description for more details.
-        ...    next_steps=${issue['issue next steps']}
-        ...    details=${issue['issue description']}
-    END
 
 
 *** Keywords ***
 Suite Initialization
+    ${RUN_TYPE}=    RW.Core.Import User Variable    RUN_TYPE
+    ...    type=string
+    ...    description="Type of run: runbook or sli"
+    ...    default=runbook
     ${INTERPRETER}=    RW.Core.Import User Variable    INTERPRETER
     ...    type=string
     ...    description="Shell: bash or python"
@@ -125,6 +133,7 @@ Suite Initialization
         Set To Dictionary    ${secret_objs}    ${env_name}    ${secret_obj}
     END
     
+    Set Suite Variable    ${RUN_TYPE}    ${RUN_TYPE}
     Set Suite Variable    ${TASK_TITLE}    ${TASK_TITLE}
     Set Suite Variable    ${INTERPRETER}    ${INTERPRETER}
     Set Suite Variable    ${GEN_CMD}    ${GEN_CMD}
