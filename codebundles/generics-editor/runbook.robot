@@ -78,7 +78,6 @@ ${TASK_TITLE}
     END
 
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-    RW.Core.Add Pre To Report    Commands Used: ${history}
 
 
 *** Keywords ***
