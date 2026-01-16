@@ -124,13 +124,10 @@ ${TASK_TITLE}
         END
     END
     
-    # Prepare report data for dynamic issues (if enabled)
-    ${report_data}=    Set Variable    ${EMPTY}
-    IF    """${ADD_REPORT_TO_ISSUES}""" == "true"
-        ${report_data}=    Catenate    SEPARATOR=\n
-        ...    Stdout: ${rsp.stdout}
-        ...    Stderr: ${rsp.stderr}
-    END
+
+    ${report_data}=    Catenate    SEPARATOR=\n
+    ...    Stdout: ${rsp.stdout}
+
     
     # Method 1: File-based dynamic issue generation (issues.json, searches recursively)
     ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    
