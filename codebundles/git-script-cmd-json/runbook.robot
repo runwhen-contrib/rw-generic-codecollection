@@ -115,8 +115,15 @@ ${TASK_TITLE}
         END
     END
     
+
+    ${report_data}=    Catenate    SEPARATOR=\n
+    ...    Stdout: ${rsp.stdout}
+
+    
     # Method 1: File-based dynamic issue generation (issues.json, searches recursively)
-    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    ${CODEBUNDLE_TEMP_DIR}
+    ${file_issues_created}=    RW.DynamicIssues.Process File Based Issues    
+    ...    ${CODEBUNDLE_TEMP_DIR}
+    ...    report_data=${report_data}
     
     # Method 2: JSON query-based dynamic issue generation (if enabled and configured)
     ${json_issues_created}=    Set Variable    0
@@ -126,6 +133,7 @@ ${TASK_TITLE}
         ...    ${ISSUE_JSON_TRIGGER_KEY}
         ...    ${ISSUE_JSON_TRIGGER_VALUE}
         ...    ${ISSUE_JSON_ISSUES_KEY}
+        ...    report_data=${report_data}
     END
 
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}

@@ -22,7 +22,7 @@ class DynamicIssues:
     def __init__(self):
         self.builtin = BuiltIn()
     
-    def process_file_based_issues(self, temp_dir=None):
+    def process_file_based_issues(self, temp_dir=None, report_data=None):
         """
         Check for issues.json file and create issues from it.
         
@@ -32,6 +32,7 @@ class DynamicIssues:
         
         Args:
             temp_dir: Directory to search for files (defaults to CODEBUNDLE_TEMP_DIR)
+            report_data: Optional report data (stdout, stderr, history) to append to issue details
         
         Returns:
             Number of issues created
@@ -68,6 +69,13 @@ class DynamicIssues:
                             next_steps = issue.get('next_steps', 'Investigate and resolve the issue')
                             details = issue.get('details', '')
                             
+                            # Append report data if provided
+                            if report_data:
+                                if details:
+                                    details = f"{details}\n\n--- Command Output ---\n{report_data}"
+                                else:
+                                    details = f"--- Command Output ---\n{report_data}"
+                            
                             self.builtin.run_keyword(
                                 'RW.Core.Add Issue',
                                 f'title={title}',
@@ -91,7 +99,7 @@ class DynamicIssues:
         
         return issues_created
     
-    def process_json_query_issues(self, output_text, trigger_key, trigger_value, issues_key):
+    def process_json_query_issues(self, output_text, trigger_key, trigger_value, issues_key, report_data=None):
         """
         Search for configurable patterns in JSON output and create issues.
         
@@ -103,6 +111,7 @@ class DynamicIssues:
             trigger_key: The JSON key to check (e.g., "issuesIdentified" or "storeIssues")
             trigger_value: The value that triggers issue creation (e.g., "true" or True)
             issues_key: The JSON key containing the issues list (e.g., "issues")
+            report_data: Optional report data (stdout, stderr, history) to append to issue details
         
         Returns:
             Number of issues created
@@ -159,6 +168,13 @@ class DynamicIssues:
                                 next_steps = issue.get('next_steps', 'Investigate and resolve the issue')
                                 details = issue.get('details', json.dumps(issue, indent=2))
                                 
+                                # Append report data if provided
+                                if report_data:
+                                    if details:
+                                        details = f"{details}\n\n--- Command Output ---\n{report_data}"
+                                    else:
+                                        details = f"--- Command Output ---\n{report_data}"
+                                
                                 self.builtin.run_keyword(
                                     'RW.Core.Add Issue',
                                     f'title={title}',
@@ -181,13 +197,13 @@ class DynamicIssues:
         except json.JSONDecodeError:
             # Try to find JSON objects in the text
             logger.info("Output is not valid JSON, attempting to find JSON objects in text")
-            issues_created = self._extract_json_from_text(output_text, trigger_key, trigger_value, issues_key)
+            issues_created = self._extract_json_from_text(output_text, trigger_key, trigger_value, issues_key, report_data)
         except Exception as e:
             logger.warn(f"Failed to process JSON query: {str(e)}")
         
         return issues_created
     
-    def _extract_json_from_text(self, text, trigger_key, trigger_value, issues_key):
+    def _extract_json_from_text(self, text, trigger_key, trigger_value, issues_key, report_data=None):
         """Helper method to extract JSON objects from text that may contain non-JSON content"""
         issues_created = 0
         
@@ -235,6 +251,13 @@ class DynamicIssues:
                                         reproduce_hint = issue.get('reproduce_hint', 'Review the command output')
                                         next_steps = issue.get('next_steps', 'Investigate and resolve the issue')
                                         details = issue.get('details', json.dumps(issue, indent=2))
+                                        
+                                        # Append report data if provided
+                                        if report_data:
+                                            if details:
+                                                details = f"{details}\n\n--- Command Output ---\n{report_data}"
+                                            else:
+                                                details = f"--- Command Output ---\n{report_data}"
                                         
                                         self.builtin.run_keyword(
                                             'RW.Core.Add Issue',
