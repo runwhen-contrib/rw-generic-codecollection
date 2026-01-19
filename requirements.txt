@@ -9,3 +9,5 @@ azure-cosmos>=4.5.1
 azure-identity>=1.15.0
 azure-mgmt-cosmosdb>=9.0.0
 psycopg[binary]>=3.3.2
+google-auth>=2.0.0
+google-cloud-bigquery>=3.0.0
