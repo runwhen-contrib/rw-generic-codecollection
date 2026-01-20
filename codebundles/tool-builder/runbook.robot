@@ -53,6 +53,7 @@ ${TASK_TITLE}
     ...    cmd=${command}
     ...    env=${raw_env_vars}
     ...    &{secret_kwargs}
+    ...    timeout_seconds=${TIMEOUT_SECONDS}
 
     ${history}=    RW.CLI.Pop Shell History
     
@@ -100,7 +101,12 @@ Suite Initialization
     ...    description=A useful task title. This is useful for helping find this generic task with RunWhen Assistants. 
     ...    pattern=\w*
     ...    example="Run a bash command"
-
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=300
+    ...    default=300
     # env vars management
     ${env_vars_json}=    RW.Core.Import User Variable    CONFIG_ENV_MAP
     ...    type=string
