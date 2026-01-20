@@ -121,3 +121,4 @@ Suite Initialization
     Set Suite Variable    ${GEN_CMD}    ${GEN_CMD}
     Set Suite Variable    ${raw_env_vars}    ${raw_env_vars}
     Set Suite Variable    ${secret_objs}    ${secret_objs}
+    Set Suite Variable    ${TIMEOUT_SECONDS}
