@@ -53,6 +53,7 @@ ${TASK_TITLE}
     ...    cmd=${command}
     ...    env=${raw_env_vars}
     ...    &{secret_kwargs}
+    ...    timeout_seconds=${TIMEOUT_SECONDS}
     
     ${metric_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/metric_data.json
     ${metric}=    Evaluate    json.load(open(r'''${metric_file}''')) if os.path.exists(r'''${metric_file}''') and os.path.getsize(r'''${metric_file}''') > 0 else 0    modules=json,os
@@ -77,7 +78,12 @@ Suite Initialization
     ...    description=A useful task title. This is useful for helping find this generic task with RunWhen Assistants. 
     ...    pattern=\w*
     ...    example="Run a bash command"
-
+    ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
+    ...    type=string
+    ...    description=The amount of seconds before the command is killed. 
+    ...    pattern=\w*
+    ...    example=300
+    ...    default=300
     # env vars management
     ${env_vars_json}=    RW.Core.Import User Variable    CONFIG_ENV_MAP
     ...    type=string
@@ -115,3 +121,4 @@ Suite Initialization
     Set Suite Variable    ${GEN_CMD}    ${GEN_CMD}
     Set Suite Variable    ${raw_env_vars}    ${raw_env_vars}
     Set Suite Variable    ${secret_objs}    ${secret_objs}
+    Set Suite Variable    ${TIMEOUT_SECONDS}
