@@ -11,3 +11,4 @@ azure-mgmt-cosmosdb>=9.0.0
 psycopg[binary]>=3.3.2
 google-auth>=2.0.0
 google-cloud-bigquery>=3.0.0
+neo4j>=5.15.0,<6.0.0
