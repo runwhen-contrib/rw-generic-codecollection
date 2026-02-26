@@ -85,8 +85,8 @@ ${TASK_TITLE}
 Suite Initialization
     ${RUN_TYPE}=    RW.Core.Import User Variable    RUN_TYPE
     ...    type=string
-    ...    description="Type of run: runbook or sli"
-    ...    default=runbook
+    ...    description="Type of run: task or sli"
+    ...    default=task
     ${INTERPRETER}=    RW.Core.Import User Variable    INTERPRETER
     ...    type=string
     ...    description="Shell: bash or python"
