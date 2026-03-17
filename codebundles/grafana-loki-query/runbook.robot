@@ -75,7 +75,6 @@ ${TASK_TITLE}
     # 7) Add output to the report
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-    RW.Core.Add Pre To Report    Commands Used: ${history}
 
 
 *** Keywords ***

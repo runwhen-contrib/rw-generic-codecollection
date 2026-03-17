@@ -35,13 +35,11 @@ ${TASK_TITLE}
         ...    details=${ISSUE_DETAILS}
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
 
     ELSE
         RW.Core.Add Pre To Report    No output was returned from the command, indicating no errors were found.
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
         RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-        RW.Core.Add Pre To Report    Commands Used: ${history}
     END
 
 

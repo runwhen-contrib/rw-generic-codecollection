@@ -60,7 +60,6 @@ ${TASK_TITLE}
     
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
-    RW.Core.Add Pre To Report    Commands Used: ${history}
     
     # Add summary if any dynamic issues were created
     ${total_issues}=    Evaluate    ${file_issues_created} + ${json_issues_created}
