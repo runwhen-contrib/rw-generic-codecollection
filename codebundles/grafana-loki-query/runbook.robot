@@ -1,8 +1,15 @@
 *** Settings ***
-Documentation       This CodeBundle queries Loki (via Grafana) using relative times like 30m, 2h, or 2d, 
-...                 which are automatically converted to nanosecond timestamps. If HEADERS is provided, 
-...                 '-K ./HEADERS' is appended for authentication. If POST_PROCESS is provided, 
-...                 the command output is piped to that command (e.g., jq).
+Documentation       This CodeBundle queries Loki via Grafana, supporting relative times like 30m, 2h, 2d.
+...                 Two modes are supported via QUERY_MODE:
+...                   - "proxy" (default): hits /api/datasources/proxy/{uid|id}/loki/api/v1/query_range.
+...                   - "ds_query": hits POST /api/ds/query (the same API Grafana Explore uses). Use this
+...                     if "proxy" fails (for example with TLS errors like
+...                     "x509: certificate signed by unknown authority") while Grafana Explore can run
+...                     the same query successfully.
+...                 LOKI_QUERY (and the JSON body in ds_query mode) are passed via base64 + stdin so
+...                 LogQL containing quotes, backticks, or other shell-special characters is safe.
+...                 If HEADERS is provided, '-K ./HEADERS' is appended for authentication.
+...                 If POST_PROCESS is provided, the command output is piped to that command (e.g., jq).
 Metadata            Author       stewartshea
 Metadata            Display Name     Loki Query via Grafana (Relative Times)
 Metadata            Supports     Grafana Loki
@@ -12,67 +19,73 @@ Library             RW.Core
 Library             RW.platform
 Library             OperatingSystem
 Library             RW.CLI
-Library             DateTime
-Library             String
+Library             RW.Utils.Time
 
 Suite Setup         Suite Initialization
 
 
 *** Tasks ***
 ${TASK_TITLE}
-    [Documentation]    Builds and runs a Loki query through Grafana’s proxy, allowing 
-    ...                relative start/end times (like 30m, 2h, 2d). The output is then
-    ...                added to the Robot report.
+    [Documentation]    Builds and runs a Loki query through Grafana, allowing
+    ...                relative start/end times (like 30m, 2h, 2d). Uses either the
+    ...                datasource proxy API (default) or Grafana's /api/ds/query API
+    ...                depending on QUERY_MODE.
     [Tags]            grafana    loki    cli    generic    access:read-only
 
-    IF   $DATASOURCE_ID == ''
-        ${LIST_CMD}=    Set Variable    curl -s -X GET "${GRAFANA_URL}/api/datasources"
-        ${LIST_CMD}=    Set Variable    ${LIST_CMD} -K ./HEADERS
-        ${LIST_CMD}=    Set Variable    ${LIST_CMD} | jq -r --arg DS "${DATASOURCE_UID}" '.[] | select(.uid == $DS) | .id'
+    IF    '${QUERY_MODE}' == 'ds_query'
+        # ds_query mode: POST /api/ds/query (Explore's API). Times are in milliseconds.
+        ${start_ms}=    Convert Relative Time To Ms Epoch    ${LOKI_START}
+        ${end_ms}=      Convert Relative Time To Ms Epoch    ${LOKI_END}
+        ${MAX_LINES}=   Set Variable If    '${LOKI_LIMIT}' == ''    100    ${LOKI_LIMIT}
 
-        ${list_rsp}=    RW.CLI.Run Cli    cmd=${LIST_CMD}
-        ${DATASOURCE_ID}=    Convert To Integer    ${list_rsp.stdout}
+        # Build the JSON body in Python so any quotes/backticks/etc in LOKI_QUERY are escaped properly,
+        # then base64-encode it so we can pipe it into curl without shell-quoting hazards.
+        ${json_body}=    Evaluate    json.dumps({"queries":[{"refId":"A","expr":$LOKI_QUERY,"queryType":"range","maxLines":int($MAX_LINES),"datasource":{"type":"loki","uid":$DATASOURCE_UID}}],"from":str($start_ms),"to":str($end_ms)})    modules=json
+        ${b64_body}=     Evaluate    base64.b64encode(($json_body).encode()).decode()    modules=base64
+
+        Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    echo ${b64_body} | base64 -d | curl -sS -X POST "${GRAFANA_URL}/api/ds/query?ds_type=loki" -H "Content-Type: application/json" -H "Accept: application/json" -H "X-Datasource-Uid: ${DATASOURCE_UID}" -H "X-Plugin-Id: loki" --data-binary @-
+    ELSE
+        # proxy mode: prefer the UID-based path so DATASOURCE_ID is optional.
+        IF    '${DATASOURCE_ID}' != ''
+            ${PROXY_TARGET}=    Set Variable    ${DATASOURCE_ID}
+        ELSE
+            ${PROXY_TARGET}=    Set Variable    uid/${DATASOURCE_UID}
+        END
+
+        # Pipe the LogQL via base64 so it is shell-safe regardless of contents (quotes, backticks, etc.).
+        ${b64_query}=    Evaluate    base64.b64encode(($LOKI_QUERY).encode()).decode()    modules=base64
+
+        Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    echo ${b64_query} | base64 -d | curl -G "${GRAFANA_URL}/api/datasources/proxy/${PROXY_TARGET}/loki/api/v1/query_range" --data-urlencode "query@-"
+
+        IF    $LOKI_LIMIT != ''
+            Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode "limit=${LOKI_LIMIT}"
+        END
+
+        IF    $LOKI_START != ''
+            ${start_epoch}=    Convert Relative Time To Nano Epoch    ${LOKI_START}
+            Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode "start=${start_epoch}"
+        END
+
+        IF    $LOKI_END != ''
+            ${end_epoch}=    Convert Relative Time To Nano Epoch    ${LOKI_END}
+            Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode "end=${end_epoch}"
+        END
     END
 
-    # 1) Build the base command
-    Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    curl -G "${GRAFANA_URL}/api/datasources/proxy/${DATASOURCE_ID}/loki/api/v1/query_range"
-
-    # 2) Always add the main query
-    Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode 'query=${LOKI_QUERY}'
-
-    # 3) Convert and apply LOKI_LIMIT, LOKI_START, LOKI_END if provided
-    IF  $LOKI_LIMIT != ''
-        Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode 'limit=${LOKI_LIMIT}'
-    END
-
-    IF  $LOKI_START != ''
-        ${start_epoch}=    Convert Relative Time To Nano Epoch    ${LOKI_START}
-        Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode 'start=${start_epoch}'
-    END
-
-    IF  $LOKI_END != ''
-        ${end_epoch}=      Convert Relative Time To Nano Epoch    ${LOKI_END}
-        Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} --data-urlencode 'end=${end_epoch}'
-    END
-
-    # 4) Conditionally append headers
-    IF  $HEADERS != ''
+    IF    $HEADERS != ''
         Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} -K ./HEADERS
     END
 
-    # 5) Optionally pipe the cURL output to a post-processing command (e.g. jq)
-    IF  $POST_PROCESS != ''
+    IF    $POST_PROCESS != ''
         Set Suite Variable    ${GRAFANA_LOKI_COMMAND}    ${GRAFANA_LOKI_COMMAND} | ${POST_PROCESS}
     END
 
-    # 6) Run the assembled command
     ${rsp}=    RW.CLI.Run Cli
     ...        cmd=${GRAFANA_LOKI_COMMAND}
     ...        secret_file__HEADERS=${HEADERS}
 
     ${history}=    RW.CLI.Pop Shell History
 
-    # 7) Add output to the report
     RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
     RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
 
@@ -85,17 +98,25 @@ Suite Initialization
     ...                 pattern=\w*
     ...                 example=https://my-grafana.org
 
+    ${QUERY_MODE}=       RW.Core.Import User Variable    QUERY_MODE
+    ...                 type=string
+    ...                 description=Which Grafana API to use. "proxy" (default) hits /api/datasources/proxy/{uid|id}/loki/api/v1/query_range. "ds_query" hits POST /api/ds/query (the same API Grafana Explore uses). Use "ds_query" if "proxy" fails (e.g. with TLS errors like "x509: certificate signed by unknown authority") while Grafana Explore can run the same query.
+    ...                 pattern=\w*
+    ...                 default=proxy
+    ...                 example=ds_query
+
+    ${DATASOURCE_UID}=   RW.Core.Import User Variable    DATASOURCE_UID
+    ...                 type=string
+    ...                 description=UID of your Loki datasource in Grafana. Recommended primary identifier (easier to find than the numeric ID and stable across environments). Required.
+    ...                 pattern=\w*
+    ...                 example=logs-production
+
     ${DATASOURCE_ID}=    RW.Core.Import User Variable    DATASOURCE_ID
     ...                 type=string
-    ...                 description=Numeric ID of your Loki data source in Grafana.
+    ...                 description=Optional. Numeric ID of your Loki datasource. Only used in QUERY_MODE=proxy. If empty, the UID-based proxy URL is used instead.
     ...                 pattern=\w*
-    ...                 example=2
-    
-    ${DATASOURCE_UID}=    RW.Core.Import User Variable    DATASOURCE_UID
-    ...                 type=string
-    ...                 description=Name your Loki data source in Grafana.
-    ...                 pattern=\w*
-    ...                 example=2
+    ...                 default=
+    ...                 example=201
 
     ${LOKI_QUERY}=       RW.Core.Import User Variable    LOKI_QUERY
     ...                 type=string
@@ -105,22 +126,24 @@ Suite Initialization
 
     ${LOKI_LIMIT}=       RW.Core.Import User Variable    LOKI_LIMIT
     ...                 type=string
-    ...                 description=Optional. The maximum number of entries to return.
+    ...                 description=Optional. Maximum entries to return. In QUERY_MODE=proxy this is the Loki "limit" parameter; in QUERY_MODE=ds_query it becomes "maxLines" (defaults to 100 if unset).
     ...                 pattern=\w*
+    ...                 default=
     ...                 example=100
 
     ${LOKI_START}=       RW.Core.Import User Variable    LOKI_START
     ...                 type=string
-    ...                 description=Optional. A relative time (30m, 2h, 2d) or an absolute timestamp in nanoseconds or RFC3339. If relative, it is converted to "now - X".
+    ...                 description=Optional. A relative time (30m, 2h, 2d) or an absolute timestamp. If relative, it is converted to "now - X" (nanoseconds in proxy mode, milliseconds in ds_query mode).
     ...                 pattern=\w*
     ...                 example=2h
     ...                 default=30m
 
     ${LOKI_END}=         RW.Core.Import User Variable    LOKI_END
     ...                 type=string
-    ...                 description=Optional. A relative or absolute time. If relative, it is also processed as "now - X".
+    ...                 description=Optional. A relative or absolute time. Same semantics as LOKI_START. In ds_query mode an empty value defaults to "now".
     ...                 pattern=\w*
     ...                 example=30m
+    ...                 default=
 
     ${HEADERS}=          RW.Core.Import Secret    HEADERS
     ...                 type=string
@@ -128,67 +151,17 @@ Suite Initialization
     ...                 pattern=\w*
     ...                 example='header = "Authorization: Bearer GRAFANA_TOKEN"'
 
-    ${POST_PROCESS}=      RW.Core.Import User Variable    POST_PROCESS
+    ${POST_PROCESS}=     RW.Core.Import User Variable    POST_PROCESS
     ...                 type=string
     ...                 description=Optional command to parse/transform cURL output (e.g., jq).
     ...                 pattern=\w*
     ...                 example="jq -r '.data.result[].values[][1]'"
 
-    ${TASK_TITLE}=        RW.Core.Import User Variable    TASK_TITLE
+    ${TASK_TITLE}=       RW.Core.Import User Variable    TASK_TITLE
     ...                 type=string
-    ...                 description=The name of the task to run. 
+    ...                 description=The name of the task to run.
     ...                 pattern=\w*
     ...                 example="Fetch logs from Loki via Grafana"
     ...                 default="Loki Query Through Grafana"
 
     Set Suite Variable    ${TASK_TITLE}    ${TASK_TITLE}
-
-
-# -----------------------------------
-# Helper to convert "30m", "2h", etc.
-# to nanosecond timestamps for Loki
-# -----------------------------------
-*** Keywords ***
-Convert Relative Time To Nano Epoch
-    [Arguments]    ${time_string}
-    # Example usage:
-    #   ${start_ns}=  Convert Relative Time To Nano Epoch    2h
-    #   => returns now - 2 hours, in nanoseconds (e.g., 1681594963000000000)
-
-    # 1) Extract the last character to see if it ends in s/m/h/d
-    ${length}=    Get Length    ${time_string}
-    ${start_index}=    Evaluate    ${length} - 1
-    ${last_char}=    Get Substring    ${time_string}    ${start_index}    ${length}
-
-    # 2) If last_char is s, m, h, or d => parse as a relative time
-    IF  $last_char in ["s", "m", "h", "d"]
-        # The numeric portion is everything but the last character
-        ${without_last}=    Get Substring    ${time_string}    0    ${start_index}
-        ${amount}=          Convert To Integer    ${without_last}
-
-        # Convert that amount to total seconds
-        ${seconds}=  Set Variable    0
-        IF    '${last_char}' == 's'
-            ${seconds}=    Set Variable    ${amount}
-        ELSE IF    '${last_char}' == 'm'
-            ${seconds}=    Set Variable    ${amount} * 60
-        ELSE IF    '${last_char}' == 'h'
-            ${seconds}=    Set Variable    ${amount} * 3600
-        ELSE IF    '${last_char}' == 'd'
-            ${seconds}=    Set Variable    ${amount} * 86400
-        END
-
-        # 3) Get the current time in seconds since epoch, then convert to ns
-        ${now_secs}=    Get Current Date    result_format=epoch
-        ${now_int}=     Convert To Integer    ${now_secs}    # remove decimal if any
-        ${now_ns}=      Evaluate    ${now_int} * 1000000000
-
-        # 4) Subtract the offset
-        ${offset_ns}=   Evaluate    ${seconds} * 1000000000
-        ${relative_ns}=     Evaluate    ${now_ns} - ${offset_ns}
-
-        Return From Keyword     ${relative_ns}
-    END
-
-    # 5) Otherwise, assume it's already an absolute timestamp or RFC3339. Return unchanged.
-    Return From Keyword    ${time_string}
