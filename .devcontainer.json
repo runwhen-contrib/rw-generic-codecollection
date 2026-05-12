@@ -2,7 +2,7 @@
     "name": "devtools",
     "shutdownAction": "none",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile.devcontainer"
     },
     "updateRemoteUserUID": false,
     "overrideCommand": false,
