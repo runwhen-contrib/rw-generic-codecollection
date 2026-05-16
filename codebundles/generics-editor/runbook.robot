@@ -122,6 +122,18 @@ Suite Initialization
     ...    Set To Dictionary
     ...    ${raw_env_vars}
     ...    PATH=${OS_PATH}
+    # Propagate PYTHONPATH from runrobot.sh's runtime-pip install path. User-supplied
+    # PYTHONPATH (if any) is prepended in front so the user can extend without losing
+    # the runtime-installed packages.
+    ${OS_PYPATH}=    Get Environment Variable    PYTHONPATH    default=
+    Run Keyword If    '${OS_PYPATH}' != '' and 'PYTHONPATH' in ${raw_env_vars}
+    ...    Set To Dictionary
+    ...    ${raw_env_vars}
+    ...    PYTHONPATH=${raw_env_vars['PYTHONPATH']}:${OS_PYPATH}
+    Run Keyword If    '${OS_PYPATH}' != '' and 'PYTHONPATH' not in ${raw_env_vars}
+    ...    Set To Dictionary
+    ...    ${raw_env_vars}
+    ...    PYTHONPATH=${OS_PYPATH}
     Set To Dictionary    ${raw_env_vars}
     ...    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
     ...    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
