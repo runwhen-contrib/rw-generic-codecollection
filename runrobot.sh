@@ -140,11 +140,24 @@ if [[ -n "${RW_TASK_REQUIREMENTS:-}" ]]; then
     echo "---" | tee -a "$PIP_LOG"
 
     START_TS=$(date +%s)
-    if ! pip install --target "$SITE_PACKAGES" --no-cache-dir -r "$REQ_FILE" 2>&1 | tee -a "$PIP_LOG"; then
+    # Pipe through pip_log_streamer.py so PAPI gets live SSE updates while
+    # `tee` keeps writing the canonical pip_install.log file. Streamer is
+    # best-effort: any POST failure is logged to stderr but doesn't kill the
+    # install (the file always wins).
+    set -o pipefail
+    if ! pip install --target "$SITE_PACKAGES" --no-cache-dir -r "$REQ_FILE" 2>&1 \
+            | tee -a "$PIP_LOG" \
+            | python3 "$RUNWHEN_HOME/robot-runtime/pip_log_streamer.py" \
+                --papi-url "$RW_API_BASE_URL" \
+                --workspace "$RW_WORKSPACE" \
+                --run-id "$RW_RUNREQUEST_ID" \
+                --token "$RW_ACCESS_TOKEN"; then
+        set +o pipefail
         ELAPSED=$(($(date +%s) - START_TS))
         echo "[runtime-packages] FAILED after ${ELAPSED}s; see pip_install.log" | tee -a "$PIP_LOG" >&2
         exit 1
     fi
+    set +o pipefail
     ELAPSED=$(($(date +%s) - START_TS))
     echo "[runtime-packages] installed in ${ELAPSED}s" | tee -a "$PIP_LOG"
 
