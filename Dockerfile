@@ -42,6 +42,7 @@ COPY --chown=runwhen:0 . .
 
 # Override base-image runrobot.sh with the runtime-package-install-aware version
 COPY --chown=runwhen:0 runrobot.sh /home/runwhen/robot-runtime/runrobot.sh
+COPY --chown=runwhen:0 runrobot.py /home/runwhen/robot-runtime/runrobot.py
 
 RUN if [ -f "requirements.txt" ]; then pip install --no-cache-dir -r requirements.txt; else echo "requirements.txt not found, skipping pip install"; fi
 
