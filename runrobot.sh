@@ -132,8 +132,11 @@ if [[ -n "${RW_TASK_REQUIREMENTS:-}" ]]; then
     }
 
     mkdir -p "$SITE_PACKAGES"
-    echo "[runtime-packages] installing $(wc -l <"$REQ_FILE") packages to $SITE_PACKAGES" | tee -a "$PIP_LOG"
-    cat "$REQ_FILE" | tee -a "$PIP_LOG"
+    # awk 'END{print NR}' correctly counts lines even if the final line has no trailing newline
+    PKG_COUNT=$(awk 'END{print NR}' "$REQ_FILE")
+    echo "[runtime-packages] installing $PKG_COUNT package(s) to $SITE_PACKAGES" | tee -a "$PIP_LOG"
+    # awk 1 prints every line and guarantees a trailing newline (cat doesn't, leaving the next line flush)
+    awk 1 "$REQ_FILE" | tee -a "$PIP_LOG"
     echo "---" | tee -a "$PIP_LOG"
 
     START_TS=$(date +%s)
