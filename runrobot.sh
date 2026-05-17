@@ -168,6 +168,25 @@ if [[ -n "${RW_TASK_REQUIREMENTS:-}" ]]; then
 
     # Prepend our site-packages so user-installed packages win over any baked ones
     export PYTHONPATH="$SITE_PACKAGES${PYTHONPATH:+:$PYTHONPATH}"
+
+    # ─── v2.2 audit: capture resolved package versions and POST to PAPI ──
+    # Best-effort: any failure here logs to stderr and doesn't fail the run.
+    RESOLVED_JSON=$(pip freeze --path "$SITE_PACKAGES" 2>/dev/null | python3 -c '
+import json, sys
+lines = [l.strip() for l in sys.stdin if l.strip() and not l.startswith("#")]
+print(json.dumps({"resolved": lines}))
+' 2>/dev/null)
+
+    if [[ -n "$RESOLVED_JSON" ]]; then
+        curl -sk -X POST \
+            "$RW_API_BASE_URL/api/v1/workspaces/$RW_WORKSPACE/author/run/$RW_RUNREQUEST_ID/audit/resolved" \
+            -H "Authorization: Bearer $RW_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$RESOLVED_JSON" \
+            --max-time 10 \
+            > /dev/null 2>&1 \
+            || echo "[runtime-packages] audit POST failed (non-fatal)" >&2
+    fi
 fi
 
 # 10) Run the robot with execution-specific logs directory
