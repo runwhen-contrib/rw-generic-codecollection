@@ -145,7 +145,12 @@ if [[ -n "${RW_TASK_REQUIREMENTS:-}" ]]; then
     # best-effort: any POST failure is logged to stderr but doesn't kill the
     # install (the file always wins).
     set -o pipefail
-    if ! pip install --target "$SITE_PACKAGES" --no-cache-dir -r "$REQ_FILE" 2>&1 \
+    # Note: --no-cache-dir intentionally dropped (v2.1). Worker pods are long-lived
+    # and pip's default cache at $HOME/.cache/pip persists for the pod's lifetime,
+    # turning repeat installs of the same wheel (pandas, numpy, etc.) from ~12s
+    # cold-cache to ~2s warm-cache. Lost on pod restart; in-cluster mirror + hostPath
+    # PVC for cross-restart persistence is a separate v2.2 if needed.
+    if ! pip install --target "$SITE_PACKAGES" -r "$REQ_FILE" 2>&1 \
             | tee -a "$PIP_LOG" \
             | python3 "$RUNWHEN_HOME/robot-runtime/pip_log_streamer.py" \
                 --papi-url "$RW_API_BASE_URL" \
