@@ -62,3 +62,29 @@ def test_notify_sends_jsonrpc_without_id(mcp_server):
     session = requests.Session()
     _notify(session, mcp_server.url, "notifications/initialized")
     # Test passes if the callback's assertions inside conftest succeed.
+
+
+from mcp_tool_proxy import render_tool_output
+
+
+def test_render_collapses_text_parts():
+    rpc_result = {"result": {"content": [
+        {"type": "text", "text": "hello"},
+        {"type": "text", "text": "world"},
+    ]}}
+    assert render_tool_output(rpc_result) == "hello\nworld"
+
+
+def test_render_passes_through_non_text_parts_as_json():
+    rpc_result = {"result": {"content": [
+        {"type": "text", "text": "head"},
+        {"type": "image", "data": "AAA", "mimeType": "image/png"},
+    ]}}
+    out = render_tool_output(rpc_result)
+    assert out.startswith("head\n")
+    assert '"type": "image"' in out
+
+
+def test_render_falls_back_to_full_result_json_when_no_content():
+    rpc_result = {"result": {"foo": "bar"}}
+    assert json.loads(render_tool_output(rpc_result)) == {"foo": "bar"}

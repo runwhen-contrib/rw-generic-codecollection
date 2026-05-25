@@ -79,3 +79,19 @@ def _notify(session, url, method, params=None):
     if params is not None:
         payload["params"] = params
     session.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+
+
+def render_tool_output(rpc_result):
+    """Flatten MCP `result.content` (typed parts) to a single string for
+    the runner's task-output channel. Text parts pass through; other types
+    are serialized as JSON so nothing is silently dropped."""
+    content_parts = (rpc_result.get("result") or {}).get("content", [])
+    if not content_parts:
+        return json.dumps(rpc_result.get("result", {}), indent=2)
+    chunks = []
+    for part in content_parts:
+        if part.get("type") == "text":
+            chunks.append(part.get("text", ""))
+        else:
+            chunks.append(json.dumps(part, indent=2))
+    return "\n".join(chunks)
