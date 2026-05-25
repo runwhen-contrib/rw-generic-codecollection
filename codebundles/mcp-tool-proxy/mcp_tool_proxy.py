@@ -149,3 +149,37 @@ def invoke_tool(server_url, tool_name, tool_args, auth_token):
         rendered = render_tool_output(rpc_result)
         return f"MCP tool '{tool_name}' returned isError=true:\n{rendered}"
     return render_tool_output(rpc_result)
+
+
+def main():
+    """Entry point. Exit-code policy:
+      - 0 = handshake completed and we have a tool response (including tool
+            errors and result.isError=true cases — those land in stdout so
+            agentfarm can see and react to them).
+      - 1 = transport failure or initialize-time protocol failure — the task
+            could not produce useful tool output. stderr describes why.
+    """
+    server_url = os.environ["MCP_SERVER_URL"]
+    tool_name  = os.environ["MCP_TOOL_NAME"]
+    tool_args  = json.loads(os.environ.get("MCP_TOOL_ARGS_JSON", "") or "{}")
+    auth_token = os.environ.get("MCP_AUTH", "")
+
+    try:
+        output = invoke_tool(server_url, tool_name, tool_args, auth_token)
+    except McpProtocolError as exc:
+        # Protocol failure (e.g. initialize returned an error envelope).
+        # Can't produce tool output → mark task failed.
+        print(f"mcp_tool_proxy: {tool_name} protocol failure: {exc}",
+              file=sys.stderr)
+        return 1
+    except requests.RequestException as exc:
+        # Transport failure (connection refused, timeout, TLS, 5xx).
+        print(f"mcp_tool_proxy: {tool_name} transport failure: {exc}",
+              file=sys.stderr)
+        return 1
+    print(output)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
