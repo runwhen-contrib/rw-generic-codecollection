@@ -1,0 +1,33 @@
+apiVersion: runwhen.com/v1
+kind: Runbook
+metadata:
+  name: {{slx_name}}
+spec:
+  location: {{default_location}}
+  codeBundle:
+    repoUrl: https://github.com/runwhen-contrib/rw-generic-codecollection.git
+    ref: main
+    pathToRobot: codebundles/mcp-tool-proxy/runbook.robot
+  # Static — same for every invocation of this SLX.
+  configProvided:
+    - name: MCP_SERVER_URL
+      value: {{match_resource.spec.server_url}}
+    - name: MCP_TOOL_NAME
+      value: {{match_resource.spec.tool_name}}
+    - name: MCP_INPUT_SCHEMA
+      value: '{{match_resource.spec.input_schema | tojson}}'
+  secretsProvided:
+    - name: mcp_auth
+      workspaceKey: {{match_resource.spec.secret_ref}}
+  # Dynamic per-invocation. Rendered from the MCP tool's input_schema.properties.
+  # Values are supplied by agentfarm at task-run time and merged into the runner
+  # env by papi's assemble_runbook_env (explorer.py:496-547) — no allowlist or
+  # pre-declaration check at that layer; arbitrary keys are accepted.
+  runtimeVarsProvided:
+    {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
+    - name: {{pname}}
+      type: {{pschema.type | default("string")}}
+      description: "{{pschema.description | default('') | replace('\"', '\\\"')}}"
+      {% if pschema.default is defined %}default: {{pschema.default | tojson}}{% endif %}
+      required: {{pname in (match_resource.spec.input_schema.required | default([]))}}
+    {% endfor %}
