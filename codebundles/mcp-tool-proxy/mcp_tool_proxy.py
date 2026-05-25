@@ -95,3 +95,57 @@ def render_tool_output(rpc_result):
         else:
             chunks.append(json.dumps(part, indent=2))
     return "\n".join(chunks)
+
+
+def _format_tool_error(tool_name: str, err: dict) -> str:
+    code = err.get("code", "?")
+    msg = err.get("message", "")
+    data = err.get("data")
+    out = [f"MCP tool '{tool_name}' returned error (code {code}): {msg}"]
+    if data is not None:
+        out.append(json.dumps(data, indent=2))
+    return "\n".join(out)
+
+
+def invoke_tool(server_url, tool_name, tool_args, auth_token):
+    """Run the full MCP exchange for a single tool call.
+
+    Returns the rendered tool output as a string for all cases where the
+    handshake completed and the server returned a response — including tool
+    errors and result.isError=true. Callers (main) treat the returned string
+    as task output and exit 0.
+
+    Raises McpProtocolError when the protocol itself fails (initialize
+    returned an error envelope or session setup failed) — main translates
+    those to exit 1. Transport errors (requests.RequestException) propagate
+    untouched.
+    """
+    session = requests.Session()
+    session.headers.update({
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {auth_token}",
+        "Accept": "application/json, text/event-stream",
+    })
+
+    init = _rpc(session, server_url, "initialize", {
+        "protocolVersion": PROTOCOL_VERSION,
+        "capabilities": {},
+        "clientInfo": {"name": CLIENT_NAME, "version": CLIENT_VERSION},
+    }, request_id=1)
+    if "error" in init:
+        err = init["error"]
+        raise McpProtocolError(
+            f"initialize failed (code {err.get('code')}): {err.get('message')}")
+
+    _notify(session, server_url, "notifications/initialized")
+
+    rpc_result = _rpc(session, server_url, "tools/call",
+                      {"name": tool_name, "arguments": tool_args},
+                      request_id=2)
+    if "error" in rpc_result:
+        return _format_tool_error(tool_name, rpc_result["error"])
+    result = rpc_result.get("result") or {}
+    if result.get("isError"):
+        rendered = render_tool_output(rpc_result)
+        return f"MCP tool '{tool_name}' returned isError=true:\n{rendered}"
+    return render_tool_output(rpc_result)

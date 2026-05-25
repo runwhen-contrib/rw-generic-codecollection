@@ -88,3 +88,73 @@ def test_render_passes_through_non_text_parts_as_json():
 def test_render_falls_back_to_full_result_json_when_no_content():
     rpc_result = {"result": {"foo": "bar"}}
     assert json.loads(render_tool_output(rpc_result)) == {"foo": "bar"}
+
+
+from mcp_tool_proxy import invoke_tool
+
+
+def test_invoke_tool_runs_full_handshake_on_success(mcp_server):
+    mcp_server.expect_initialize(session_id="sess-abc")
+    mcp_server.expect_initialized_notification()
+    mcp_server.expect_tools_call(
+        tool_name="create_issue",
+        expected_args={"project": "ENG", "summary": "Fix login bug"},
+        content_parts=[{"type": "text", "text": "Created ENG-42"}],
+    )
+
+    output = invoke_tool(
+        server_url=mcp_server.url,
+        tool_name="create_issue",
+        tool_args={"project": "ENG", "summary": "Fix login bug"},
+        auth_token="t0k",
+    )
+    assert output == "Created ENG-42"
+
+
+def test_invoke_tool_returns_error_string_on_tool_rpc_error(mcp_server):
+    """tools/call returning a JSON-RPC error envelope = tool reported an
+    error; surface as string output (task succeeds), don't raise."""
+    mcp_server.expect_initialize()
+    mcp_server.expect_initialized_notification()
+    mcp_server.expect_tools_call_error(code=-32602, message="bad arg")
+    output = invoke_tool(server_url=mcp_server.url, tool_name="create_issue",
+                         tool_args={"project": "X"}, auth_token="t")
+    assert "create_issue" in output
+    assert "bad arg" in output
+    assert "-32602" in output
+
+
+def test_invoke_tool_returns_error_string_on_is_error_result(mcp_server):
+    """tools/call returning result.isError=true also = tool reported an error."""
+    mcp_server.expect_initialize()
+    mcp_server.expect_initialized_notification()
+
+    def cb(request):
+        body = json.loads(request.body)
+        return (200, {"Content-Type": "application/json"},
+                json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                            "result": {"isError": True,
+                                       "content": [{"type": "text",
+                                                    "text": "permission denied"}]}}))
+    mcp_server.mock.add_callback(responses.POST, mcp_server.url, callback=cb)
+
+    output = invoke_tool(server_url=mcp_server.url, tool_name="delete_thing",
+                         tool_args={}, auth_token="t")
+    assert "delete_thing" in output
+    assert "permission denied" in output
+
+
+def test_invoke_tool_raises_on_initialize_error(mcp_server):
+    """An error during the initialize handshake = we can't even start an MCP
+    session; treat as a protocol failure (main translates to exit 1)."""
+    def cb(request):
+        body = json.loads(request.body)
+        return (200, {"Content-Type": "application/json"},
+                json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                            "error": {"code": -32000, "message": "unauthorized"}}))
+    mcp_server.mock.add_callback(responses.POST, mcp_server.url, callback=cb)
+    with pytest.raises(McpProtocolError) as excinfo:
+        invoke_tool(server_url=mcp_server.url, tool_name="x",
+                    tool_args={}, auth_token="t")
+    assert "initialize" in str(excinfo.value)
+    assert "unauthorized" in str(excinfo.value)
