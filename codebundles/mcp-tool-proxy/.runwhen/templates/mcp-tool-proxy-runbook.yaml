@@ -20,13 +20,27 @@ spec:
     - name: mcp_auth
       workspaceKey: {{match_resource.spec.secret_ref}}
   # Dynamic per-invocation. Rendered from the MCP tool's input_schema.properties.
-  # RuntimeVarEntry only supports name/default/description/validation
-  # (corestate-operator api/v1/common_types.go) — MCP's `required` and `type`
-  # don't map, so they're dropped here. The Robot wrapper enforces presence at
-  # tool-call time via the input schema it receives in MCP_INPUT_SCHEMA.
+  # RuntimeVarEntry shape: name/default/description/validation
+  # (corestate-operator api/v1/common_types.go). Validation.type is constrained
+  # to "enum" or "regex" — when the MCP property has neither, we emit a
+  # permissive `.*` regex so every var carries a validation block.
   runtimeVarsProvided:
     {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
     - name: {{pname}}
       description: "{{pschema.description | default('') | replace('\"', '\\\"')}}"
       default: "{{pschema.default | default('')}}"
+      validation:
+        {% if pschema.enum is defined %}
+        type: enum
+        values:
+          {% for v in pschema.enum %}
+          - "{{v}}"
+          {% endfor %}
+        {% elif pschema.pattern is defined %}
+        type: regex
+        pattern: "{{pschema.pattern | replace('\"', '\\\"')}}"
+        {% else %}
+        type: regex
+        pattern: ".*"
+        {% endif %}
     {% endfor %}
