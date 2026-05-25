@@ -52,3 +52,13 @@ def test_parse_response_returns_none_for_empty_sse():
         headers = {"Content-Type": "text/event-stream"}
         text = ""
     assert _parse_response(FakeResp()) is None
+
+
+from mcp_tool_proxy import _notify
+
+
+def test_notify_sends_jsonrpc_without_id(mcp_server):
+    mcp_server.expect_initialized_notification()
+    session = requests.Session()
+    _notify(session, mcp_server.url, "notifications/initialized")
+    # Test passes if the callback's assertions inside conftest succeed.

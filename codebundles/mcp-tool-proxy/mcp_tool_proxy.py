@@ -71,3 +71,11 @@ def _rpc(session, url, method, params, request_id):
     if parsed is None:
         raise McpProtocolError(f"empty response from {method}")
     return parsed
+
+
+def _notify(session, url, method, params=None):
+    """Fire-and-forget JSON-RPC notification (no `id` field, no return value)."""
+    payload = {"jsonrpc": "2.0", "method": method}
+    if params is not None:
+        payload["params"] = params
+    session.post(url, json=payload, timeout=REQUEST_TIMEOUT)
