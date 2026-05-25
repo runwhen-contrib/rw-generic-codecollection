@@ -4,22 +4,24 @@
 
 **Goal:** Wrap private customer MCP servers as RunWhen tasks by generating one SLX per MCP tool, using the existing runner-side workspace-builder cycle for sync, with zero agentfarm changes.
 
-**Architecture:** A new `mcp-tool-proxy` codebundle holds a constant Python MCP client (`initialize` → `tools/call`), a Robot wrapper that dynamically imports per-tool input parameters as user variables, and a generation rule + templates that render one SLX per discovered tool. A new `mcp_tools` indexer in `runwhen-local` pulls registered MCP servers from papi, calls each server's `tools/list` in-VPC, and emits `mcp_tool` resources for the generation rule to match. Per-invocation arguments flow from agentfarm via `runtime_var_values` → papi's `assemble_runbook_env` → the runner env → the Robot wrapper, with no platform allowlist needed.
+**Architecture:** A new `mcp-tool-proxy` codebundle holds a constant Python MCP client (`initialize` → `tools/call`), a Robot wrapper that dynamically imports per-tool input parameters as user variables, and a generation rule + templates that render one SLX per discovered tool. A new `mcp_tools` indexer in `runwhen-local` reads registered MCP servers from Helm-provided `mcpConfig` values (Approach D2), calls each server's `tools/list` in-VPC, and emits `mcp_tool` resources for the generation rule to match. Per-invocation arguments still flow from agentfarm via `runtime_var_values` → papi's `assemble_runbook_env` → the runner env → the Robot wrapper, with no platform allowlist needed — papi is in the *invocation* path but not in the *discovery* path.
 
 **Tech Stack:** Python 3 (`requests`), Robot Framework (RW.Core, Process, Collections), Jinja2 generation templates, `pytest` + `responses` for tests. Runs against the existing rw-generic-codecollection Dockerfile (already includes Python + Robot).
 
-**Scope of this plan:** (a) `codebundles/mcp-tool-proxy/` in `rw-generic-codecollection` and (b) the new `mcp_tools` indexer in `runwhen-local`. Papi work (`MCPServer` table, CRUD endpoints, registration UI) is **out of scope** for this plan — it lives in a separate plan in the papi repo. This plan stubs the papi-discovery endpoint behind a setting so the rest of the work can be developed and tested without papi.
+**Scope of this plan:** (a) `codebundles/mcp-tool-proxy/` in `rw-generic-codecollection` and (b) the new `mcp_tools` indexer in `runwhen-local`. Per the **D2 decision (see defaults below)**, MCP server definitions come from the workspace-builder's Helm-provided config — **no papi or platform-side work is required for v1**. A small follow-up in `helm-charts` is needed to expose the `mcpConfig.servers` values to the workspace-builder; that's a trivial one-line values addition tracked separately.
 
 **Defaults locked for §10 open decisions:**
 
 | Decision | Value | Reason |
 |---|---|---|
-| Discovery mechanism | **D1** (pull from papi) | Spec §7.4 recommendation |
+| Discovery mechanism | **D2** (Helm-defined config) | User decision 2026-05-25: defer all papi/platform changes; consume MCP servers from runner Helm config |
 | SLX naming | `mcp__{server_display_name}__{tool_name}` | Spec §10.3 proposal; matches existing `mcp__` convention |
+| Resource path / hierarchy | `mcp/{server_display_name}` (in `additionalContext`) | User decision 2026-05-25: groups SLXs by MCP server in the platform's resource view |
+| Access tag | `read-only` for all generated SLXs | User decision 2026-05-25: provisional default until we can distinguish read-only vs. read-write MCP tools (e.g. from naming heuristics or tool annotations) |
 | Probe failure | **Preserve** previous SLXs on `tools/list` failure | Spec §7.9 recommendation — avoid flap |
-| On-registration UX | Wait for next builder cycle | Simplest v1; out-of-band trigger can land later |
+| On-registration UX | Wait for next builder cycle (registration is a Helm upgrade) | D2 chosen — registration is GitOps-style, not a UI flow |
 | RBAC defaults | Workspace default | Out of scope for v1 |
-| UI grouping | Tag-based only (`source=mcp`, `mcp_server={name}`) | No new UI surface in v1 |
+| UI grouping | `path: mcp/{server}` in `additionalContext` + tags (`source=mcp`, `mcp_server={name}`) | No new UI surface in v1 |
 | MCP transport | HTTP/JSON-RPC only | Spec §10.8 |
 
 ---
@@ -64,9 +66,9 @@ src/component.py                                    # register "mcp_tools" in in
 ```
 
 Responsibilities:
-- `indexers/mcp_tools.py` — module-level `DOCUMENTATION`, `SETTINGS`, and `index(context: Context)` function. Fetches the workspace's MCP server list from papi (URL from a new `MCP_REGISTRY_URL` setting), then for each server calls `tools/list` (in-VPC), then for each tool calls `context.get_property("registry").add_resource("mcp", "mcp_tool", ...)`.
+- `indexers/mcp_tools.py` — module-level `DOCUMENTATION`, `SETTINGS`, and `index(context: Context)` function. Reads the workspace's MCP server list from a new `MCP_CONFIG` setting (DICT, populated from Helm `mcpConfig:` values via the existing workspaceInfo plumbing — same pattern as `CLOUD_CONFIG_SETTING` in `src/indexers/common.py`). Then for each configured server: calls `tools/list` (in-VPC) and adds an `mcp_tool` resource per discovered tool to the Registry.
 - `component.py:251` — add `"mcp_tools"` to the `Stage.INDEXER` list.
-- `src/tests.py` — pytest cases mocking the papi response and `tools/list` responses, asserting the expected number/shape of resources lands in the Registry.
+- `src/tests.py` — pytest cases that construct a `Context` with a stubbed `MCP_CONFIG` setting and `responses`-mocked `tools/list` calls, asserting the expected number/shape of resources lands in the Registry.
 
 ---
 
@@ -246,6 +248,8 @@ git commit -m "test: add stub MCP server fixture for mcp-tool-proxy tests"
 
 ### Task 1.2: `_rpc` helper — JSON-RPC POST, parse JSON or SSE response
 
+> **Error policy.** `_rpc` returns the parsed JSON-RPC envelope as-is — including envelopes that carry an `error` field. It only raises `McpProtocolError` for malformed/empty responses (no envelope to return). Callers decide what to do with `error` envelopes: `initialize` errors are fatal (task fail); `tools/call` errors are surfaced as task output (task succeed). This split is what lets `main()` distinguish "transport/init failure" (exit 1) from "tool reported an error" (exit 0 + error string in stdout) per the design.
+
 **Files:**
 - Create: `codebundles/mcp-tool-proxy/tests/test_mcp_client.py`
 - Create: `codebundles/mcp-tool-proxy/mcp_tool_proxy.py`
@@ -275,13 +279,25 @@ def test_rpc_returns_parsed_result_on_json_response(mcp_server):
     assert result["result"]["protocolVersion"] == "2025-03-26"
 
 
-def test_rpc_raises_on_jsonrpc_error(mcp_server):
+def test_rpc_returns_error_envelope_intact(mcp_server):
+    """_rpc must NOT raise on JSON-RPC error envelopes — callers (invoke_tool)
+    decide whether an error is fatal (init) or surfacable as output (tools/call)."""
     mcp_server.expect_tools_call_error(code=-32601, message="method not found")
     session = requests.Session()
-    with pytest.raises(McpProtocolError) as excinfo:
-        _rpc(session, mcp_server.url, "tools/call",
-             {"name": "x", "arguments": {}}, request_id=1)
-    assert "method not found" in str(excinfo.value)
+    parsed = _rpc(session, mcp_server.url, "tools/call",
+                  {"name": "x", "arguments": {}}, request_id=1)
+    assert parsed["error"]["code"] == -32601
+    assert parsed["error"]["message"] == "method not found"
+
+
+def test_rpc_raises_on_empty_response(mcp_server):
+    """A 200 with no parseable JSON body is a protocol violation — raise."""
+    import responses as _r
+    mcp_server.mock.add(_r.POST, mcp_server.url, status=200, body="",
+                        content_type="text/event-stream")
+    session = requests.Session()
+    with pytest.raises(McpProtocolError):
+        _rpc(session, mcp_server.url, "tools/call", {}, request_id=1)
 
 
 def test_parse_response_handles_sse():
@@ -366,6 +382,12 @@ def _parse_response(resp):
 
 
 def _rpc(session, url, method, params, request_id):
+    """POST a JSON-RPC request and return the parsed envelope. Envelopes
+    carrying an `error` field are returned as-is — callers decide whether
+    to fail (init errors) or surface as output (tool-call errors).
+    Raises McpProtocolError only for malformed/empty responses where no
+    envelope is available to return. Lets requests exceptions propagate
+    so transport failures bubble up to main()."""
     resp = session.post(
         url,
         json={"jsonrpc": "2.0", "id": request_id,
@@ -379,9 +401,6 @@ def _rpc(session, url, method, params, request_id):
     parsed = _parse_response(resp)
     if parsed is None:
         raise McpProtocolError(f"empty response from {method}")
-    if "error" in parsed:
-        err = parsed["error"]
-        raise McpProtocolError(f"{method}: {err.get('message')} (code {err.get('code')})")
     return parsed
 ```
 
@@ -392,13 +411,13 @@ cd codebundles/mcp-tool-proxy
 PYTHONPATH=. .venv/bin/pytest tests/test_mcp_client.py -v
 ```
 
-Expected: 4 passed.
+Expected: 5 passed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add codebundles/mcp-tool-proxy/mcp_tool_proxy.py codebundles/mcp-tool-proxy/tests/test_mcp_client.py
-git commit -m "feat(mcp-tool-proxy): _rpc helper with JSON/SSE parsing and error handling"
+git commit -m "feat(mcp-tool-proxy): _rpc returns envelopes verbatim (callers handle errors)"
 ```
 
 ---
@@ -451,7 +470,7 @@ def _notify(session, url, method, params=None):
 PYTHONPATH=. .venv/bin/pytest tests/test_mcp_client.py -v
 ```
 
-Expected: 5 passed.
+Expected: 6 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -534,7 +553,7 @@ def render_tool_output(rpc_result):
 PYTHONPATH=. .venv/bin/pytest tests/test_mcp_client.py -v
 ```
 
-Expected: 8 passed.
+Expected: 9 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -545,11 +564,13 @@ git commit -m "feat(mcp-tool-proxy): render_tool_output collapses MCP content pa
 
 ---
 
-### Task 1.5: `invoke_tool` — full handshake + tools/call
+### Task 1.5: `invoke_tool` — full handshake + error-class differentiation
 
 **Files:**
 - Modify: `codebundles/mcp-tool-proxy/tests/test_mcp_client.py`
 - Modify: `codebundles/mcp-tool-proxy/mcp_tool_proxy.py`
+
+> **Error policy reminder.** `invoke_tool` returns a string in all "the tool ran and we got a response" cases — including tool errors and `result.isError: true` cases — so `main()` can write the string to stdout and exit 0. It raises `McpProtocolError` only when the protocol itself broke (init returned an error envelope, or session couldn't be established) — `main()` translates those to exit 1. Transport errors (`requests.RequestException`) propagate untouched.
 
 - [ ] **Step 1: Add failing tests**
 
@@ -559,7 +580,7 @@ Append to `tests/test_mcp_client.py`:
 from mcp_tool_proxy import invoke_tool
 
 
-def test_invoke_tool_runs_full_handshake(mcp_server):
+def test_invoke_tool_runs_full_handshake_on_success(mcp_server):
     mcp_server.expect_initialize(session_id="sess-abc")
     mcp_server.expect_initialized_notification()
     mcp_server.expect_tools_call(
@@ -577,13 +598,53 @@ def test_invoke_tool_runs_full_handshake(mcp_server):
     assert output == "Created ENG-42"
 
 
-def test_invoke_tool_raises_on_tool_error(mcp_server):
+def test_invoke_tool_returns_error_string_on_tool_rpc_error(mcp_server):
+    """tools/call returning a JSON-RPC error envelope = tool reported an
+    error; surface as string output (task succeeds), don't raise."""
     mcp_server.expect_initialize()
     mcp_server.expect_initialized_notification()
     mcp_server.expect_tools_call_error(code=-32602, message="bad arg")
-    with pytest.raises(McpProtocolError):
+    output = invoke_tool(server_url=mcp_server.url, tool_name="create_issue",
+                         tool_args={"project": "X"}, auth_token="t")
+    assert "create_issue" in output
+    assert "bad arg" in output
+    assert "-32602" in output
+
+
+def test_invoke_tool_returns_error_string_on_is_error_result(mcp_server):
+    """tools/call returning result.isError=true also = tool reported an error."""
+    mcp_server.expect_initialize()
+    mcp_server.expect_initialized_notification()
+
+    def cb(request):
+        body = json.loads(request.body)
+        return (200, {"Content-Type": "application/json"},
+                json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                            "result": {"isError": True,
+                                       "content": [{"type": "text",
+                                                    "text": "permission denied"}]}}))
+    mcp_server.mock.add_callback(responses.POST, mcp_server.url, callback=cb)
+
+    output = invoke_tool(server_url=mcp_server.url, tool_name="delete_thing",
+                         tool_args={}, auth_token="t")
+    assert "delete_thing" in output
+    assert "permission denied" in output
+
+
+def test_invoke_tool_raises_on_initialize_error(mcp_server):
+    """An error during the initialize handshake = we can't even start an MCP
+    session; treat as a protocol failure (main translates to exit 1)."""
+    def cb(request):
+        body = json.loads(request.body)
+        return (200, {"Content-Type": "application/json"},
+                json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                            "error": {"code": -32000, "message": "unauthorized"}}))
+    mcp_server.mock.add_callback(responses.POST, mcp_server.url, callback=cb)
+    with pytest.raises(McpProtocolError) as excinfo:
         invoke_tool(server_url=mcp_server.url, tool_name="x",
                     tool_args={}, auth_token="t")
+    assert "initialize" in str(excinfo.value)
+    assert "unauthorized" in str(excinfo.value)
 ```
 
 - [ ] **Step 2: Run and verify failure**
@@ -599,9 +660,29 @@ Expected: ImportError on `invoke_tool`.
 Append to `mcp_tool_proxy.py`:
 
 ```python
+def _format_tool_error(tool_name: str, err: dict) -> str:
+    code = err.get("code", "?")
+    msg = err.get("message", "")
+    data = err.get("data")
+    out = [f"MCP tool '{tool_name}' returned error (code {code}): {msg}"]
+    if data is not None:
+        out.append(json.dumps(data, indent=2))
+    return "\n".join(out)
+
+
 def invoke_tool(server_url, tool_name, tool_args, auth_token):
-    """Run the full MCP exchange for a single tool call. Returns the rendered
-    tool output as a string. Raises McpProtocolError on protocol failure."""
+    """Run the full MCP exchange for a single tool call.
+
+    Returns the rendered tool output as a string for all cases where the
+    handshake completed and the server returned a response — including tool
+    errors and result.isError=true. Callers (main) treat the returned string
+    as task output and exit 0.
+
+    Raises McpProtocolError when the protocol itself fails (initialize
+    returned an error envelope or session setup failed) — main translates
+    those to exit 1. Transport errors (requests.RequestException) propagate
+    untouched.
+    """
     session = requests.Session()
     session.headers.update({
         "Content-Type": "application/json",
@@ -609,17 +690,27 @@ def invoke_tool(server_url, tool_name, tool_args, auth_token):
         "Accept": "application/json, text/event-stream",
     })
 
-    _rpc(session, server_url, "initialize", {
+    init = _rpc(session, server_url, "initialize", {
         "protocolVersion": PROTOCOL_VERSION,
         "capabilities": {},
         "clientInfo": {"name": CLIENT_NAME, "version": CLIENT_VERSION},
     }, request_id=1)
+    if "error" in init:
+        err = init["error"]
+        raise McpProtocolError(
+            f"initialize failed (code {err.get('code')}): {err.get('message')}")
 
     _notify(session, server_url, "notifications/initialized")
 
     rpc_result = _rpc(session, server_url, "tools/call",
                       {"name": tool_name, "arguments": tool_args},
                       request_id=2)
+    if "error" in rpc_result:
+        return _format_tool_error(tool_name, rpc_result["error"])
+    result = rpc_result.get("result") or {}
+    if result.get("isError"):
+        rendered = render_tool_output(rpc_result)
+        return f"MCP tool '{tool_name}' returned isError=true:\n{rendered}"
     return render_tool_output(rpc_result)
 ```
 
@@ -629,13 +720,13 @@ def invoke_tool(server_url, tool_name, tool_args, auth_token):
 PYTHONPATH=. .venv/bin/pytest tests/test_mcp_client.py -v
 ```
 
-Expected: 10 passed.
+Expected: 13 passed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add codebundles/mcp-tool-proxy/mcp_tool_proxy.py codebundles/mcp-tool-proxy/tests/test_mcp_client.py
-git commit -m "feat(mcp-tool-proxy): invoke_tool wires init + tools/call handshake"
+git commit -m "feat(mcp-tool-proxy): invoke_tool splits init-error (raise) vs tool-error (string)"
 ```
 
 ---
@@ -702,7 +793,10 @@ def test_main_in_process_returns_zero_and_prints(mcp_server, capsys, monkeypatch
     assert "hi back" in captured.out
 
 
-def test_main_in_process_returns_nonzero_on_protocol_error(mcp_server, capsys, monkeypatch):
+def test_main_in_process_returns_zero_on_tool_error_and_prints_to_stdout(mcp_server, capsys, monkeypatch):
+    """Per the design: MCP tool errors are surfaced as task OUTPUT (stdout,
+    exit 0) so agentfarm can see the error message and react. Only transport
+    or init failures mark the task as failed."""
     from mcp_tool_proxy import main
 
     mcp_server.expect_initialize()
@@ -715,8 +809,47 @@ def test_main_in_process_returns_nonzero_on_protocol_error(mcp_server, capsys, m
 
     rc = main()
     captured = capsys.readouterr()
+    assert rc == 0
+    assert "nope" in captured.out
+    assert "x" in captured.out  # tool name in error string
+
+
+def test_main_in_process_returns_nonzero_on_initialize_error(mcp_server, capsys, monkeypatch):
+    """initialize-time failure = task fails (exit 1, error to stderr)."""
+    from mcp_tool_proxy import main
+
+    def cb(request):
+        body = json.loads(request.body)
+        return (200, {"Content-Type": "application/json"},
+                json.dumps({"jsonrpc": "2.0", "id": body["id"],
+                            "error": {"code": -32000, "message": "unauthorized"}}))
+    mcp_server.mock.add_callback(responses.POST, mcp_server.url, callback=cb)
+
+    monkeypatch.setenv("MCP_SERVER_URL", mcp_server.url)
+    monkeypatch.setenv("MCP_TOOL_NAME", "x")
+    monkeypatch.setenv("MCP_TOOL_ARGS_JSON", "{}")
+    monkeypatch.setenv("MCP_AUTH", "tok")
+
+    rc = main()
+    captured = capsys.readouterr()
     assert rc != 0
-    assert "nope" in captured.err
+    assert "unauthorized" in captured.err
+
+
+def test_main_in_process_returns_nonzero_on_transport_failure(capsys, monkeypatch):
+    """Connection refused / unreachable server = task fails (exit 1)."""
+    from mcp_tool_proxy import main
+
+    # Point at a port nothing is listening on, with a tight timeout.
+    monkeypatch.setenv("MCP_SERVER_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("MCP_TOOL_NAME", "x")
+    monkeypatch.setenv("MCP_TOOL_ARGS_JSON", "{}")
+    monkeypatch.setenv("MCP_AUTH", "tok")
+
+    rc = main()
+    captured = capsys.readouterr()
+    assert rc != 0
+    assert captured.err  # something was written to stderr
 
 
 def test_main_defaults_missing_args_json_to_empty(monkeypatch, mcp_server):
@@ -751,6 +884,13 @@ Append to `mcp_tool_proxy.py`:
 
 ```python
 def main():
+    """Entry point. Exit-code policy:
+      - 0 = handshake completed and we have a tool response (including tool
+            errors and result.isError=true cases — those land in stdout so
+            agentfarm can see and react to them).
+      - 1 = transport failure or initialize-time protocol failure — the task
+            could not produce useful tool output. stderr describes why.
+    """
     server_url = os.environ["MCP_SERVER_URL"]
     tool_name  = os.environ["MCP_TOOL_NAME"]
     tool_args  = json.loads(os.environ.get("MCP_TOOL_ARGS_JSON", "") or "{}")
@@ -758,8 +898,16 @@ def main():
 
     try:
         output = invoke_tool(server_url, tool_name, tool_args, auth_token)
-    except (McpProtocolError, requests.RequestException) as exc:
-        print(f"mcp_tool_proxy: {tool_name} failed: {exc}", file=sys.stderr)
+    except McpProtocolError as exc:
+        # Protocol failure (e.g. initialize returned an error envelope).
+        # Can't produce tool output → mark task failed.
+        print(f"mcp_tool_proxy: {tool_name} protocol failure: {exc}",
+              file=sys.stderr)
+        return 1
+    except requests.RequestException as exc:
+        # Transport failure (connection refused, timeout, TLS, 5xx).
+        print(f"mcp_tool_proxy: {tool_name} transport failure: {exc}",
+              file=sys.stderr)
         return 1
     print(output)
     return 0
@@ -1118,6 +1266,8 @@ spec:
     - name: MCP_INPUT_SCHEMA
       value: '{{match_resource.spec.input_schema | tojson}}'
   additionalContext:
+    path: "mcp/{{match_resource.spec.server_display_name}}"
+    hierarchy: "mcp/{{match_resource.spec.server_display_name}}"
     mcp_server_id: "{{match_resource.spec.server_id}}"
     mcp_tool_name: "{{match_resource.spec.tool_name}}"
   tags:
@@ -1126,7 +1276,7 @@ spec:
     - name: mcp_server
       value: "{{match_resource.spec.server_display_name}}"
     - name: access
-      value: read-write
+      value: read-only
 ```
 
 - [ ] **Step 2: Render-test the template with a synthetic resource**
@@ -1255,7 +1405,7 @@ git commit -m "feat(mcp-tool-proxy): Runbook template with dynamic runtimeVarsPr
 > git checkout -b feat/mcp-tools-indexer
 > ```
 
-### Task 4.1: Add the `MCP_REGISTRY_URL` setting and indexer skeleton
+### Task 4.1: Add the `MCP_CONFIG` setting and indexer skeleton
 
 **Files:**
 - Create: `/Users/prats/Documents/work/runwhen-local/src/indexers/mcp_tools.py`
@@ -1266,9 +1416,10 @@ Path: `src/indexers/mcp_tools.py`
 
 ```python
 """Indexer that discovers MCP tools by:
-  1. Fetching the workspace's registered MCP servers from papi
-     (GET {MCP_REGISTRY_URL}/api/v3/workspaces/{ws}/mcp-servers).
-  2. For each registered server, calling its `tools/list` MCP endpoint
+  1. Reading the workspace's MCP server list from the MCP_CONFIG setting
+     (populated from Helm `mcpConfig:` values via the runner's existing
+     workspaceInfo plumbing — Approach D2).
+  2. For each configured server, calling its `tools/list` MCP endpoint
      (in-VPC, outbound from the runner).
   3. Emitting one `mcp_tool` resource per tool to the Registry, with the
      server's URL/secret-ref/display-name and the tool's input schema.
@@ -1278,7 +1429,6 @@ resources and renders one SLX + Runbook per tool via the mcp-tool-proxy
 templates in rw-generic-codecollection.
 """
 
-import json
 import logging
 from typing import Any
 
@@ -1289,37 +1439,30 @@ from resources import Registry, REGISTRY_PROPERTY_NAME
 
 logger = logging.getLogger(__name__)
 
-DOCUMENTATION = "Discovers MCP tools from registered MCP servers (Approach D)."
+DOCUMENTATION = "Discovers MCP tools from Helm-configured MCP servers (Approach D2)."
 
-MCP_REGISTRY_URL_SETTING = Setting(
-    "MCP_REGISTRY_URL",
-    "mcpRegistryUrl",
-    Setting.Type.STRING,
-    "Base URL of the papi service that exposes the MCP server registry.",
-    "",
-)
-
-WORKSPACE_NAME_SETTING = Setting(
-    "WORKSPACE_NAME",
-    "workspaceName",
-    Setting.Type.STRING,
-    "Workspace identifier used when fetching the MCP server registry.",
-    "",
-)
-
-# Optional auth header value to send to papi. Empty means no auth header.
-MCP_REGISTRY_AUTH_SETTING = Setting(
-    "MCP_REGISTRY_AUTH",
-    "mcpRegistryAuth",
-    Setting.Type.STRING,
-    "Authorization header value to send to papi when fetching the MCP registry.",
-    "",
+# Same pattern as CLOUD_CONFIG_SETTING in src/indexers/common.py — a DICT
+# setting populated from the workspaceInfo YAML's `mcpConfig:` key, which the
+# runner Helm chart writes from its values.yaml `mcpConfig:` block:
+#
+#   mcpConfig:
+#     servers:
+#       - display_name: jira
+#         url: https://jira-mcp.internal:443/mcp
+#         secret_ref: jira-mcp-token
+#       - display_name: linear
+#         url: https://linear-mcp.internal:443/mcp
+#         secret_ref: linear-mcp-token
+MCP_CONFIG_SETTING = Setting(
+    "MCP_CONFIG",
+    "mcpConfig",
+    Setting.Type.DICT,
+    "Configuration for MCP servers to introspect for tool discovery.",
+    dict(),
 )
 
 SETTINGS = (
-    SettingDependency(MCP_REGISTRY_URL_SETTING, False),
-    SettingDependency(WORKSPACE_NAME_SETTING, False),
-    SettingDependency(MCP_REGISTRY_AUTH_SETTING, False),
+    SettingDependency(MCP_CONFIG_SETTING, False),
 )
 
 PLATFORM_NAME = "mcp"
@@ -1328,16 +1471,12 @@ TOOLS_LIST_TIMEOUT = 15
 
 
 def index(context: Context) -> None:
-    registry_url = context.get_setting(MCP_REGISTRY_URL_SETTING)
-    workspace = context.get_setting(WORKSPACE_NAME_SETTING)
-    if not registry_url or not workspace:
-        logger.info("mcp_tools: MCP_REGISTRY_URL or WORKSPACE_NAME unset; skipping.")
+    config = context.get_setting(MCP_CONFIG_SETTING) or {}
+    servers = _load_servers_from_setting(config, on_warning=context.add_warning)
+    if not servers:
+        logger.info("mcp_tools: no MCP servers configured; skipping.")
         return
 
-    servers = _fetch_registered_servers(
-        registry_url, workspace,
-        context.get_setting(MCP_REGISTRY_AUTH_SETTING),
-    )
     registry: Registry = context.get_property(REGISTRY_PROPERTY_NAME)
 
     for server in servers:
@@ -1374,7 +1513,7 @@ git commit -m "feat(indexer): scaffold mcp_tools indexer with settings"
 
 ---
 
-### Task 4.2: Implement `_fetch_registered_servers` (TDD)
+### Task 4.2: Implement `_load_servers_from_setting` (TDD)
 
 **Files:**
 - Modify: `/Users/prats/Documents/work/runwhen-local/src/tests.py`
@@ -1386,93 +1525,92 @@ Append to `src/tests.py`:
 
 ```python
 from unittest import TestCase, mock
-import responses
 
 from indexers import mcp_tools
 
 
-class FetchRegisteredServersTest(TestCase):
-    @responses.activate
-    def test_fetches_and_returns_list(self):
-        responses.add(
-            responses.GET,
-            "https://papi.test/api/v3/workspaces/w1/mcp-servers",
-            json={"items": [
-                {"server_id": "u1", "display_name": "jira",
-                 "url": "https://jira-mcp.internal/mcp",
-                 "secret_ref": "jira-mcp-token"},
-            ]},
-            status=200,
-        )
-        servers = mcp_tools._fetch_registered_servers(
-            "https://papi.test", "w1", "Bearer abc")
-        self.assertEqual(len(servers), 1)
+class LoadServersFromSettingTest(TestCase):
+    def test_returns_servers_list_from_well_formed_config(self):
+        config = {"servers": [
+            {"display_name": "jira",
+             "url": "https://jira-mcp.internal/mcp",
+             "secret_ref": "jira-mcp-token"},
+            {"display_name": "linear",
+             "url": "https://linear-mcp.internal/mcp",
+             "secret_ref": "linear-mcp-token"},
+        ]}
+        servers = mcp_tools._load_servers_from_setting(config)
+        self.assertEqual(len(servers), 2)
         self.assertEqual(servers[0]["display_name"], "jira")
 
-    @responses.activate
-    def test_returns_empty_on_404(self):
-        responses.add(
-            responses.GET,
-            "https://papi.test/api/v3/workspaces/w1/mcp-servers",
-            status=404,
-        )
-        self.assertEqual(
-            mcp_tools._fetch_registered_servers("https://papi.test", "w1", ""),
-            [],
-        )
+    def test_returns_empty_when_no_servers_key(self):
+        self.assertEqual(mcp_tools._load_servers_from_setting({}), [])
+        self.assertEqual(mcp_tools._load_servers_from_setting(None), [])
 
-    @responses.activate
-    def test_raises_on_5xx(self):
-        responses.add(
-            responses.GET,
-            "https://papi.test/api/v3/workspaces/w1/mcp-servers",
-            status=500,
-        )
-        with self.assertRaises(requests.HTTPError):
-            mcp_tools._fetch_registered_servers("https://papi.test", "w1", "")
+    def test_skips_entries_missing_required_fields_and_warns(self):
+        warnings = []
+        config = {"servers": [
+            {"display_name": "ok",
+             "url": "https://ok.internal/mcp",
+             "secret_ref": "ok-token"},
+            {"display_name": "broken"},  # missing url + secret_ref
+            {"url": "https://anon.internal/mcp",
+             "secret_ref": "anon-token"},  # missing display_name
+        ]}
+        servers = mcp_tools._load_servers_from_setting(
+            config, on_warning=warnings.append)
+        self.assertEqual([s["display_name"] for s in servers], ["ok"])
+        self.assertEqual(len(warnings), 2)
+        self.assertTrue(any("broken" in w for w in warnings))
 ```
-
-(Add `import requests` at top of `tests.py` if not already there.)
 
 - [ ] **Step 2: Run, verify failure**
 
 ```bash
 cd /Users/prats/Documents/work/runwhen-local
-PYTHONPATH=src python3 -m pytest src/tests.py::FetchRegisteredServersTest -v
+PYTHONPATH=src python3 -m pytest src/tests.py::LoadServersFromSettingTest -v
 ```
 
-Expected: AttributeError or failing assertion (function not implemented).
+Expected: AttributeError (function not implemented).
 
 - [ ] **Step 3: Implement**
 
 Append to `src/indexers/mcp_tools.py`:
 
 ```python
-def _fetch_registered_servers(registry_url: str,
-                              workspace: str,
-                              auth_header: str) -> list[dict[str, Any]]:
-    """GET the workspace's MCP server list from papi.
+REQUIRED_SERVER_FIELDS = ("display_name", "url", "secret_ref")
 
-    Returns [] on 404 (workspace exists but no servers registered).
-    Raises requests.HTTPError on other non-2xx responses so the cycle
-    surfaces the failure rather than silently dropping all SLXs.
+
+def _load_servers_from_setting(config, on_warning=None) -> list[dict[str, Any]]:
+    """Parse the MCP_CONFIG setting (a DICT mirroring the Helm values block)
+    into a list of validated server entries. Skips malformed entries with a
+    warning so a single bad config row doesn't prevent the rest from working.
     """
-    url = f"{registry_url.rstrip('/')}/api/v3/workspaces/{workspace}/mcp-servers"
-    headers = {"Accept": "application/json"}
-    if auth_header:
-        headers["Authorization"] = auth_header
-    resp = requests.get(url, headers=headers, timeout=TOOLS_LIST_TIMEOUT)
-    if resp.status_code == 404:
+    if not config:
         return []
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("items", [])
+    raw = config.get("servers") or []
+    valid: list[dict[str, Any]] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            if on_warning:
+                on_warning(f"mcpConfig.servers entry is not a dict: {entry!r}")
+            continue
+        missing = [f for f in REQUIRED_SERVER_FIELDS if not entry.get(f)]
+        if missing:
+            label = entry.get("display_name") or entry.get("url") or "<unnamed>"
+            if on_warning:
+                on_warning(
+                    f"mcpConfig.servers[{label}] missing required field(s) "
+                    f"{missing}; skipping")
+            continue
+        valid.append(entry)
+    return valid
 ```
 
 - [ ] **Step 4: Run tests**
 
 ```bash
-PYTHONPATH=src python3 -m pytest src/tests.py::FetchRegisteredServersTest -v
+PYTHONPATH=src python3 -m pytest src/tests.py::LoadServersFromSettingTest -v
 ```
 
 Expected: 3 passed.
@@ -1481,7 +1619,7 @@ Expected: 3 passed.
 
 ```bash
 git add src/indexers/mcp_tools.py src/tests.py
-git commit -m "feat(indexer): _fetch_registered_servers pulls MCP server list from papi"
+git commit -m "feat(indexer): _load_servers_from_setting parses MCP_CONFIG with validation"
 ```
 
 ---
@@ -1658,32 +1796,22 @@ class EmitToolResourceTest(TestCase):
         self.assertEqual(res.spec["secret_ref"], "jira-mcp-token")
         self.assertEqual(res.spec["input_schema"]["required"], ["project"])
 
-    def test_index_skips_when_settings_missing(self):
+    def test_index_skips_when_config_empty(self):
         ctx = Context({}, mock.MagicMock())
         ctx.set_property(REGISTRY_PROPERTY_NAME, Registry())
         mcp_tools.index(ctx)  # should not raise
         reg = ctx.get_property(REGISTRY_PROPERTY_NAME)
         self.assertEqual(reg.platforms, {})
 
-    @responses.activate
     def test_index_preserves_on_tools_list_failure(self):
-        # papi returns one server; tools/list returns 500 → no resources emitted,
-        # warning recorded, no exception raised.
-        responses.add(
-            responses.GET,
-            "https://papi.test/api/v3/workspaces/w1/mcp-servers",
-            json={"items": [{"server_id": "u1", "display_name": "jira",
-                             "url": "https://jira-mcp.internal/mcp",
-                             "secret_ref": "tok"}]},
-            status=200,
-        )
-        responses.add(responses.POST,
-                      "https://jira-mcp.internal/mcp", status=500)
-
+        # MCP_CONFIG lists one server; tools/list raises → no resources
+        # emitted, warning recorded, no exception propagated.
         ctx = Context({
-            "MCP_REGISTRY_URL": "https://papi.test",
-            "WORKSPACE_NAME": "w1",
-            "MCP_REGISTRY_AUTH": "",
+            "MCP_CONFIG": {"servers": [
+                {"display_name": "jira",
+                 "url": "https://jira-mcp.internal/mcp",
+                 "secret_ref": "tok"},
+            ]},
         }, mock.MagicMock())
         ctx.set_property(REGISTRY_PROPERTY_NAME, Registry())
         with mock.patch.object(mcp_tools, "_list_tools",
@@ -1806,7 +1934,7 @@ git commit -m "feat(workspace-builder): register mcp_tools indexer in component 
 **Files:**
 - Create: `/Users/prats/Documents/work/runwhen-local/src/tests.py` (append)
 
-This test exercises the full path: stub papi → stub MCP `tools/list` → indexer produces resources → generation rule + templates render SLX/Runbook YAML → assert the rendered YAML has the expected per-tool runtime vars.
+This test exercises the full path: Helm-style MCP_CONFIG → stub MCP `tools/list` → indexer produces resources → generation rule + templates render SLX/Runbook YAML → assert the rendered YAML has the expected per-tool runtime vars.
 
 - [ ] **Step 1: Add the integration test**
 
@@ -1819,23 +1947,19 @@ import yaml as _yaml
 
 
 class EndToEndMcpIndexingTest(TestCase):
-    """Runs the full mcp_tools indexer against stub papi + stub MCP, then
-    renders the rw-generic-codecollection templates against the resulting
-    registry and asserts the SLX + Runbook YAML reflect the discovered tool."""
+    """Runs the full mcp_tools indexer against an in-memory MCP_CONFIG +
+    stub MCP server, then renders the rw-generic-codecollection templates
+    against the resulting registry and asserts the SLX + Runbook YAML
+    reflect the discovered tool."""
 
     @responses.activate
     def test_indexer_to_template_render(self):
-        # 1. Stub papi
-        responses.add(
-            responses.GET,
-            "https://papi.test/api/v3/workspaces/w1/mcp-servers",
-            json={"items": [
-                {"server_id": "u1", "display_name": "jira",
-                 "url": "https://jira-mcp.internal/mcp",
-                 "secret_ref": "jira-mcp-token"},
-            ]},
-            status=200,
-        )
+        # 1. Helm-provided MCP_CONFIG (single server)
+        mcp_config = {"servers": [
+            {"display_name": "jira",
+             "url": "https://jira-mcp.internal/mcp",
+             "secret_ref": "jira-mcp-token"},
+        ]}
 
         # 2. Stub MCP tools/list
         url = "https://jira-mcp.internal/mcp"
@@ -1873,11 +1997,7 @@ class EndToEndMcpIndexingTest(TestCase):
         responses.add_callback(responses.POST, url, callback=list_cb)
 
         # 3. Run indexer with the secret resolver stubbed out
-        ctx = Context({
-            "MCP_REGISTRY_URL": "https://papi.test",
-            "WORKSPACE_NAME": "w1",
-            "MCP_REGISTRY_AUTH": "",
-        }, mock.MagicMock())
+        ctx = Context({"MCP_CONFIG": mcp_config}, mock.MagicMock())
         ctx.set_property(REGISTRY_PROPERTY_NAME, Registry())
         with mock.patch.object(mcp_tools, "_resolve_secret",
                                return_value="stub-token"):
@@ -1954,7 +2074,7 @@ execution path that every generated SLX runs.
 ## Architecture
 
 ```
-papi: MCPServer table ──> workspace-builder mcp_tools indexer ──> mcp_tool resources
+Helm values (mcpConfig) ──> workspace-builder mcp_tools indexer ──> mcp_tool resources
                                                                           │
                                                                           v
                                             .runwhen/generation-rules/mcp-tool-proxy.yaml
@@ -1989,6 +2109,18 @@ Per-invocation values are supplied by agentfarm in the RunRequest's
 `configProvided` with no allowlist — they appear in the runner env under
 their declared names.
 
+## Error handling
+
+| What happened | Task outcome | Where it shows up |
+|---|---|---|
+| Tool returned successfully | Succeeds (rc=0) | Tool output in report |
+| Tool returned a JSON-RPC error | **Succeeds** (rc=0) | Error message in report (so agentfarm can read and react) |
+| Tool returned `result.isError: true` | **Succeeds** (rc=0) | `isError` message + content in report |
+| `initialize` returned an error envelope | **Fails** (rc=1) | stderr — we couldn't even start an MCP session |
+| Transport failure (connection refused, timeout, TLS, HTTP 5xx) | **Fails** (rc=1) | stderr |
+
+Rationale: agentfarm needs the tool's error message to do something useful — retry, ask the user, route to a different tool. Surfacing tool errors as successful task output (with the error message in the report) preserves that signal. Reserve "failed task" for cases where we have no useful response to surface.
+
 ## Local dev
 
 ```bash
@@ -2020,20 +2152,21 @@ Walking spec §7 against the plan:
 | §7.1 Architecture (generation side + execution side) | T3.1, T4.5 (gen side); T1.x, T2.x (exec side) |
 | §7.2 Data flow (builder cycle + per-invocation) | T4.4 (indexer end-to-end); T2.2 (per-invocation dry-run) |
 | §7.3 Drift handling via builder cycle | T4.4 (preserve-on-failure assertion) |
-| §7.4 D1 discovery from papi | T4.2 (`_fetch_registered_servers`) |
-| §7.5.1 `MCPServer` table | **Out of scope** — papi plan |
-| §7.5.2 papi API surface | **Out of scope** — papi plan |
+| §7.4 D1 vs D2 discovery | **D2 chosen** — T4.1 (`MCP_CONFIG` setting) + T4.2 (`_load_servers_from_setting`) |
+| §7.5.1 `MCPServer` table | **Not needed** — D2 reads from Helm config |
+| §7.5.2 papi API surface | **Not needed** — D2 reads from Helm config |
 | §7.5.3 `mcp_tool` resource shape | T4.4 (`_emit_tool_resource` matches shape) |
 | §7.5.4 Generation rule | T3.1 |
 | §7.5.5 SLX template | T3.2 |
 | §7.5.6 Runbook template w/ `runtimeVarsProvided` | T3.3 |
 | §7.5.7 Robot wrapper + Python script | T1.1–T1.6, T2.1 |
+| §7.5.7 footnote: error → failed task; tool output not issue | T1.5 + T1.6 (split: transport/init → fail; tool error → output, exit 0) |
 | §7.9 Probe failure → preserve | T4.4 (test asserts) |
-| §10.1 D1 vs D2 | Locked: D1 (plan header) |
+| §10.1 D1 vs D2 | Locked: **D2** (plan header) |
 | §10.3 SLX naming | Locked: `mcp__{server}__{tool}` (template) |
 | §10.5 Probe failure semantics | Locked: preserve (T4.4) |
 
-Papi-side items (§7.5.1, §7.5.2, §10.4 UI grouping, §10.11 RBAC) are explicitly scoped out and deferred to the papi plan.
+Papi-side items (§7.5.1, §7.5.2) are **not needed under D2**. UI grouping (§10.10) and per-tool RBAC defaults (§10.11) are deferred for v1.
 
 ### Placeholder scan
 
@@ -2047,17 +2180,16 @@ No "TBD" / "TODO" / "fill in later". One known limitation in T2.2 (Robot dry-run
 
 ---
 
-## Out of scope (papi-side plan, separate)
+## Out of scope (deferred)
 
-To remove ambiguity for downstream readers — these items are explicitly NOT in this plan and need their own plan in the papi repo:
+D2 was chosen, so **no papi or platform-side work is required for v1**. The following items are explicitly NOT in this plan:
 
-1. `MCPServer` Postgres table + migration
-2. `POST/GET/PATCH/DELETE /api/v3/workspaces/{ws}/mcp-servers` endpoints
-3. UI form for registering an MCP server (URL, display name, description, secret reference)
-4. Workspace-secret integration for the `secret_ref` field
-5. Authentication between the runner-side indexer and the papi endpoint (the `MCP_REGISTRY_AUTH` setting on the runner side is just the transport — papi must validate it)
-6. Per-MCP-server RBAC (deferred; v1 inherits workspace defaults)
-7. UI grouping/filtering of MCP-derived SLXs (deferred; v1 relies on the `source=mcp` and `mcp_server={name}` tags rendered by the SLX template)
+1. **Papi `MCPServer` table + CRUD endpoints + registration UI** — not needed for D2. If we later migrate to D1, those land in a separate papi plan.
+2. **`helm-charts` repo change** — a one-line addition to the runner Helm chart's values.yaml to expose `mcpConfig.servers` and pass it through to the workspace-builder. Tracked separately; trivial.
+3. **Read-only vs. read-write tool classification** — for v1, every generated SLX is tagged `access: read-only` as a safe default. A follow-up will distinguish based on MCP tool annotations (or naming heuristics like `create_*` / `delete_*`).
+4. **Per-MCP-server RBAC** — v1 inherits workspace defaults.
+5. **UI grouping/filtering** — v1 relies on `additionalContext.path: mcp/{server}` plus the `source=mcp` and `mcp_server={name}` tags rendered by the SLX template.
+6. **On-registration UX (immediate builder trigger)** — D2 registration is a Helm upgrade + restart, so the next builder cycle catches it; no special trigger needed.
 
 ---
 
