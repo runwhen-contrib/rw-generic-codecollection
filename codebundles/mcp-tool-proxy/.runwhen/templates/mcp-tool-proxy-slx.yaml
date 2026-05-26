@@ -6,7 +6,7 @@ metadata:
     {% include "common-labels.yaml" %}
 spec:
   alias: {{ ("MCP: " ~ match_resource.spec.server_display_name ~ " / " ~ match_resource.spec.tool_name) | tojson }}
-  statement: {{ (match_resource.spec.description or ("Proxy for " ~ match_resource.spec.tool_name)) | tojson }}
+  statement: {{ (match_resource.spec.description | default("") or ("Proxy for " ~ match_resource.spec.tool_name)) | tojson }}
   additionalContext:
     hierarchy:
       - source

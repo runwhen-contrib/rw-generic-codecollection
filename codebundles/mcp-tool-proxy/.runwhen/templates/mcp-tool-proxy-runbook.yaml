@@ -6,7 +6,7 @@ spec:
   location: {{default_location}}
   codeBundle:
     repoUrl: https://github.com/runwhen-contrib/rw-generic-codecollection.git
-    ref: main
+    ref: {{ match_resource.spec.codecollection_ref | default("main") }}
     pathToRobot: codebundles/mcp-tool-proxy/runbook.robot
   # Static — same for every invocation of this SLX.
   configProvided:
@@ -27,8 +27,8 @@ spec:
   runtimeVarsProvided:
     {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
     - name: {{pname}}
-      description: {{ (pschema.description or "") | tojson }}
-      default: {{ (pschema.default or "") | tojson }}
+      description: {{ pschema.description | default("") | tojson }}
+      default: {{ pschema.default | default("") | tojson }}
       validation:
         {% if pschema.enum is defined %}
         type: enum
