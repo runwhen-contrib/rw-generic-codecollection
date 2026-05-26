@@ -6,7 +6,10 @@ spec:
   location: {{default_location}}
   codeBundle:
     repoUrl: https://github.com/runwhen-contrib/rw-generic-codecollection.git
-    ref: {{ match_resource.spec.codecollection_ref | default("main") }}
+    # Pin the runbook's clone ref to the codecollection ref this template
+    # was loaded from — `ref` is populated by the workspace-builder
+    # generation-rules engine (see generation_rules.py:643).
+    ref: {{ ref | default("main") }}
     pathToRobot: codebundles/mcp-tool-proxy/runbook.robot
   # Static — same for every invocation of this SLX.
   configProvided:
