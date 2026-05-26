@@ -25,6 +25,47 @@ Helm values (mcpConfig) ──> workspace-builder mcp_tools indexer ──> mcp_
 
 Design rationale: `docs/superpowers/specs/2026-05-20-private-mcp-integration-design.md`.
 
+## Configuring MCP servers
+
+MCP servers are declared in the workspace builder's `workspaceInfo.yaml`
+under an `mcpConfig.servers` list. With the standard Helm chart this lives
+under `runwhenLocal.workspaceBuilder.workspaceInfo.configMap.data` (when
+the chart manages the ConfigMap) or directly in the `workspaceinfo`
+ConfigMap data (when `useExistingConfigMap: true`).
+
+```yaml
+runwhenLocal:
+  workspaceBuilder:
+    workspaceInfo:
+      useExistingConfigMap: false
+      configMap:
+        create: true
+        name: workspaceinfo
+        data:
+          workspaceName: my-workspace
+          # ... other workspaceInfo fields ...
+          mcpConfig:
+            servers:
+              - display_name: jira         # used in generated SLX names + tags
+                url: https://jira-mcp.internal:443/mcp
+                secret_ref: jira-mcp-token  # k8s Secret with data.token = bearer
+              - display_name: linear
+                url: https://linear-mcp.internal:443/mcp
+                secret_ref: linear-mcp-token
+```
+
+Required fields per server: `display_name`, `url` (full HTTPS endpoint
+including path, typically `/mcp`), `secret_ref` (name of a k8s Secret
+with the bearer token under `data.token`). Optional: `verify_tls: false`
+to skip TLS verification for a server whose issuer isn't yet trusted by
+the pod's CA bundle — emits a warning per cycle while in use.
+
+The same secret must be available to runner pods at execution time
+(generated Runbooks reference it via `secretsProvided.workspaceKey`).
+
+Full reference: see [WorkspaceInfo customization &rarr; mcpConfig](https://github.com/runwhen-contrib/runwhen-local/blob/main/docs/configuration/workspaceinfo-customization.md#mcp-server-discovery-mcpconfig)
+in runwhen-local.
+
 ## Runtime contract
 
 Generated Runbooks pass:
