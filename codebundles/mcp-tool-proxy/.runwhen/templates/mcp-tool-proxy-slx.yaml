@@ -9,12 +9,13 @@ spec:
   statement: {{ (match_resource.spec.description | default("") or ("Proxy for " ~ match_resource.spec.tool_name)) | tojson }}
   additionalContext:
     hierarchy:
-      - source
+      - platform
       - mcp_server
       - mcp_tool
     qualified_name: "mcp/{{match_resource.spec.server_display_name}}/{{match_resource.spec.tool_name}}"
+    resourcePath: "mcp/{{match_resource.spec.server_display_name}}"
   tags:
-    - name: source
+    - name: platform
       value: mcp
     - name: mcp_server
       value: "{{match_resource.spec.server_display_name}}"
