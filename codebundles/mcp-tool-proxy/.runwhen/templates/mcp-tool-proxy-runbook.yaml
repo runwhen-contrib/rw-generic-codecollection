@@ -27,18 +27,18 @@ spec:
   runtimeVarsProvided:
     {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
     - name: {{pname}}
-      description: "{{pschema.description | default('') | replace('\"', '\\\"')}}"
-      default: "{{pschema.default | default('')}}"
+      description: {{ (pschema.description or "") | tojson }}
+      default: {{ (pschema.default or "") | tojson }}
       validation:
         {% if pschema.enum is defined %}
         type: enum
         values:
           {% for v in pschema.enum %}
-          - "{{v}}"
+          - {{ v | tojson }}
           {% endfor %}
         {% elif pschema.pattern is defined %}
         type: regex
-        pattern: "{{pschema.pattern | replace('\"', '\\\"')}}"
+        pattern: {{ pschema.pattern | tojson }}
         {% else %}
         type: regex
         pattern: ".*"
