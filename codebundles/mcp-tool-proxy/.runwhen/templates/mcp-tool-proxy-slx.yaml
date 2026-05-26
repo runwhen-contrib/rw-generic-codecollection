@@ -11,6 +11,7 @@ spec:
     hierarchy:
       - source
       - mcp_server
+      - mcp_tool
     qualified_name: "mcp/{{match_resource.spec.server_display_name}}/{{match_resource.spec.tool_name}}"
   tags:
     - name: source
