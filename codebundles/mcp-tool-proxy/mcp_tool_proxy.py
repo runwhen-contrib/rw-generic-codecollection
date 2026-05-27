@@ -50,18 +50,23 @@ def _parse_response(resp):
         return None
 
 
-def _rpc(session, url, method, params, request_id):
+def _rpc(session, url, method, params, request_id, verify=True):
     """POST a JSON-RPC request and return the parsed envelope. Envelopes
     carrying an `error` field are returned as-is — callers decide whether
     to fail (init errors) or surface as output (tool-call errors).
     Raises McpProtocolError only for malformed/empty responses where no
     envelope is available to return. Lets requests exceptions propagate
-    so transport failures bubble up to main()."""
+    so transport failures bubble up to main().
+
+    `verify` is passed per-call so it overrides the REQUESTS_CA_BUNDLE env
+    var that `Session.merge_environment_settings` would otherwise reapply.
+    """
     resp = session.post(
         url,
         json={"jsonrpc": "2.0", "id": request_id,
               "method": method, "params": params},
         timeout=REQUEST_TIMEOUT,
+        verify=verify,
     )
     resp.raise_for_status()
     sid = resp.headers.get("Mcp-Session-Id")
@@ -73,12 +78,12 @@ def _rpc(session, url, method, params, request_id):
     return parsed
 
 
-def _notify(session, url, method, params=None):
+def _notify(session, url, method, params=None, verify=True):
     """Fire-and-forget JSON-RPC notification (no `id` field, no return value)."""
     payload = {"jsonrpc": "2.0", "method": method}
     if params is not None:
         payload["params"] = params
-    session.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+    session.post(url, json=payload, timeout=REQUEST_TIMEOUT, verify=verify)
 
 
 def render_tool_output(rpc_result):
@@ -107,7 +112,7 @@ def _format_tool_error(tool_name: str, err: dict) -> str:
     return "\n".join(out)
 
 
-def invoke_tool(server_url, tool_name, tool_args, auth_token):
+def invoke_tool(server_url, tool_name, tool_args, auth_token, verify_tls=True):
     """Run the full MCP exchange for a single tool call.
 
     Returns the rendered tool output as a string for all cases where the
@@ -119,6 +124,10 @@ def invoke_tool(server_url, tool_name, tool_args, auth_token):
     returned an error envelope or session setup failed) — main translates
     those to exit 1. Transport errors (requests.RequestException) propagate
     untouched.
+
+    `verify_tls=False` skips TLS verification — temporary escape hatch for
+    runner pods whose CA bundle does not trust the MCP server's issuer.
+    The proper fix is to extend the pod's CA bundle (see RW-1146).
     """
     session = requests.Session()
     session.headers.update({
@@ -126,22 +135,30 @@ def invoke_tool(server_url, tool_name, tool_args, auth_token):
         "Authorization": f"Bearer {auth_token}",
         "Accept": "application/json, text/event-stream",
     })
+    session.verify = verify_tls
+    if not verify_tls:
+        try:
+            from urllib3 import disable_warnings
+            from urllib3.exceptions import InsecureRequestWarning
+            disable_warnings(InsecureRequestWarning)
+        except Exception:
+            pass
 
     init = _rpc(session, server_url, "initialize", {
         "protocolVersion": PROTOCOL_VERSION,
         "capabilities": {},
         "clientInfo": {"name": CLIENT_NAME, "version": CLIENT_VERSION},
-    }, request_id=1)
+    }, request_id=1, verify=verify_tls)
     if "error" in init:
         err = init["error"]
         raise McpProtocolError(
             f"initialize failed (code {err.get('code')}): {err.get('message')}")
 
-    _notify(session, server_url, "notifications/initialized")
+    _notify(session, server_url, "notifications/initialized", verify=verify_tls)
 
     rpc_result = _rpc(session, server_url, "tools/call",
                       {"name": tool_name, "arguments": tool_args},
-                      request_id=2)
+                      request_id=2, verify=verify_tls)
     if "error" in rpc_result:
         return _format_tool_error(tool_name, rpc_result["error"])
     result = rpc_result.get("result") or {}
@@ -163,9 +180,10 @@ def main():
     tool_name  = os.environ["MCP_TOOL_NAME"]
     tool_args  = json.loads(os.environ.get("MCP_TOOL_ARGS_JSON", "") or "{}")
     auth_token = os.environ.get("MCP_AUTH", "")
+    verify_tls = os.environ.get("MCP_VERIFY_TLS", "true").strip().lower() != "false"
 
     try:
-        output = invoke_tool(server_url, tool_name, tool_args, auth_token)
+        output = invoke_tool(server_url, tool_name, tool_args, auth_token, verify_tls=verify_tls)
     except McpProtocolError as exc:
         # Protocol failure (e.g. initialize returned an error envelope).
         # Can't produce tool output → mark task failed.

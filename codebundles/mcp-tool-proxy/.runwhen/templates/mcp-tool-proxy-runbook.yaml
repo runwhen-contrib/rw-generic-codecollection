@@ -19,6 +19,8 @@ spec:
       value: {{match_resource.spec.tool_name}}
     - name: MCP_INPUT_SCHEMA
       value: '{{match_resource.spec.input_schema | tojson}}'
+    - name: MCP_VERIFY_TLS
+      value: "{{match_resource.spec.verify_tls | default(true) | string | lower}}"
   secretsProvided:
     - name: mcp_auth
       workspaceKey: k8s:file@secret/{{match_resource.spec.secret_ref}}:token

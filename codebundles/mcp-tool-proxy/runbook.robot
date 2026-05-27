@@ -27,6 +27,7 @@ ${MCP_TOOL_NAME}
     ...        env:MCP_TOOL_NAME=${MCP_TOOL_NAME}
     ...        env:MCP_TOOL_ARGS_JSON=${tool_args_json}
     ...        env:MCP_AUTH=${mcp_auth_value}
+    ...        env:MCP_VERIFY_TLS=${MCP_VERIFY_TLS}
     ...        stderr=STDOUT
     RW.Core.Add Pre To Report    ${rsp.stdout}
     Should Be Equal As Integers    ${rsp.rc}    0
@@ -41,6 +42,8 @@ Suite Initialization
     ...    type=string    description=Name of the MCP tool this SLX proxies
     ${schema_json}=       RW.Core.Import User Variable    MCP_INPUT_SCHEMA
     ...    type=string    description=Tool input schema (JSON)    default={}
+    ${MCP_VERIFY_TLS}=    RW.Core.Import User Variable    MCP_VERIFY_TLS
+    ...    type=string    description=Verify the MCP server's TLS certificate    default=true
     ${mcp_auth}=          RW.Core.Import Secret           mcp_auth
     ...    description=Bearer token for the MCP server
 
@@ -64,5 +67,6 @@ Suite Initialization
 
     Set Suite Variable    ${MCP_SERVER_URL}
     Set Suite Variable    ${MCP_TOOL_NAME}
+    Set Suite Variable    ${MCP_VERIFY_TLS}
     Set Suite Variable    ${tool_args_json}
     Set Suite Variable    ${mcp_auth_value}
