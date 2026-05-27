@@ -10,11 +10,15 @@ spec:
   additionalContext:
     hierarchy:
       - platform
-      - mcp_server
+      - resource_name
     qualified_name: "mcp/{{match_resource.spec.server_display_name}}"
   tags:
     - name: platform
       value: mcp
+    - name: resource_name
+      value: "{{match_resource.spec.server_display_name}}"
+    - name: resource_type
+      value: mcp_server
     - name: mcp_server
       value: "{{match_resource.spec.server_display_name}}"
     - name: mcp_tool
