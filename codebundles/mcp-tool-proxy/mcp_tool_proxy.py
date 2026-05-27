@@ -30,6 +30,44 @@ class McpProtocolError(RuntimeError):
     """Raised when the MCP server returns a JSON-RPC error."""
 
 
+def _coerce_args(tool_args: dict, schema: dict) -> dict:
+    """Coerce string-valued args (from Robot's `Import User Variable`) to the
+    JSON-Schema types declared in the MCP tool's input_schema. MCP servers
+    schema-check the JSON-RPC payload — sending `"true"` (string) where the
+    schema says `boolean` fails with `invalid_type` before the tool ever runs.
+
+    Empty values are already filtered upstream in `runbook.robot`, so optional
+    args the user didn't touch stay absent in the outgoing call.
+
+    Coercion failures (e.g. user typed `"yep"` for a boolean) leave the value
+    as the original string so the MCP server's own validator can surface the
+    actual problem in its response.
+    """
+    properties = (schema or {}).get("properties") or {}
+    coerced = {}
+    for name, value in tool_args.items():
+        if not isinstance(value, str):
+            coerced[name] = value
+            continue
+        prop_type = (properties.get(name) or {}).get("type")
+        if isinstance(prop_type, list):
+            prop_type = next((t for t in prop_type if t != "null"), None)
+        try:
+            if prop_type == "boolean":
+                coerced[name] = value.strip().lower() in {"true", "1", "yes", "y", "on"}
+            elif prop_type == "integer":
+                coerced[name] = int(value)
+            elif prop_type == "number":
+                coerced[name] = float(value)
+            elif prop_type in ("array", "object"):
+                coerced[name] = json.loads(value)
+            else:
+                coerced[name] = value
+        except (ValueError, json.JSONDecodeError):
+            coerced[name] = value
+    return coerced
+
+
 def _parse_response(resp):
     """Parse a JSON or SSE response body. Returns the first JSON-RPC envelope
     found, or None if nothing parseable was returned (e.g. notification ack)."""
@@ -181,6 +219,11 @@ def main():
     tool_args  = json.loads(os.environ.get("MCP_TOOL_ARGS_JSON", "") or "{}")
     auth_token = os.environ.get("MCP_AUTH", "")
     verify_tls = os.environ.get("MCP_VERIFY_TLS", "true").strip().lower() != "false"
+    try:
+        schema = json.loads(os.environ.get("MCP_INPUT_SCHEMA", "") or "{}")
+    except json.JSONDecodeError:
+        schema = {}
+    tool_args = _coerce_args(tool_args, schema)
 
     try:
         output = invoke_tool(server_url, tool_name, tool_args, auth_token, verify_tls=verify_tls)

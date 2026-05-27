@@ -3,7 +3,51 @@ import pytest
 import requests
 import responses
 
-from mcp_tool_proxy import _rpc, _parse_response, McpProtocolError
+from mcp_tool_proxy import _rpc, _parse_response, _coerce_args, McpProtocolError
+
+
+def test_coerce_args_handles_all_json_schema_types():
+    schema = {"properties": {
+        "includeArchived": {"type": "boolean"},
+        "limit": {"type": "integer"},
+        "ratio": {"type": "number"},
+        "labels": {"type": "array"},
+        "filter": {"type": "object"},
+        "name": {"type": "string"},
+        "nullable": {"type": ["string", "null"]},
+    }}
+    raw = {
+        "includeArchived": "true", "limit": "10", "ratio": "0.5",
+        "labels": '["a", "b"]', "filter": '{"k":"v"}',
+        "name": "hello", "nullable": "ok",
+    }
+    out = _coerce_args(raw, schema)
+    assert out["includeArchived"] is True
+    assert out["limit"] == 10
+    assert out["ratio"] == 0.5
+    assert out["labels"] == ["a", "b"]
+    assert out["filter"] == {"k": "v"}
+    assert out["name"] == "hello"
+    assert out["nullable"] == "ok"
+
+
+def test_coerce_args_recognizes_common_boolean_strings():
+    schema = {"properties": {"b": {"type": "boolean"}}}
+    for truthy in ("true", "True", "1", "yes", "Y", "on"):
+        assert _coerce_args({"b": truthy}, schema)["b"] is True
+    for falsy in ("false", "0", "no", "off", "", "random"):
+        assert _coerce_args({"b": falsy}, schema)["b"] is False
+
+
+def test_coerce_args_passes_through_on_coercion_failure():
+    """Lets the MCP server's validator surface the real error."""
+    schema = {"properties": {"limit": {"type": "integer"}}}
+    assert _coerce_args({"limit": "not-a-number"}, schema) == {"limit": "not-a-number"}
+
+
+def test_coerce_args_skips_args_not_in_schema():
+    out = _coerce_args({"foo": "bar"}, {"properties": {}})
+    assert out == {"foo": "bar"}
 
 
 def test_rpc_returns_parsed_result_on_json_response(mcp_server):

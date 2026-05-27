@@ -26,6 +26,7 @@ ${MCP_TOOL_NAME}
     ...        env:MCP_SERVER_URL=${MCP_SERVER_URL}
     ...        env:MCP_TOOL_NAME=${MCP_TOOL_NAME}
     ...        env:MCP_TOOL_ARGS_JSON=${tool_args_json}
+    ...        env:MCP_INPUT_SCHEMA=${schema_json}
     ...        env:MCP_AUTH=${mcp_auth_value}
     ...        env:MCP_VERIFY_TLS=${MCP_VERIFY_TLS}
     ...        stderr=STDOUT
@@ -68,5 +69,6 @@ Suite Initialization
     Set Suite Variable    ${MCP_SERVER_URL}
     Set Suite Variable    ${MCP_TOOL_NAME}
     Set Suite Variable    ${MCP_VERIFY_TLS}
+    Set Suite Variable    ${schema_json}
     Set Suite Variable    ${tool_args_json}
     Set Suite Variable    ${mcp_auth_value}
