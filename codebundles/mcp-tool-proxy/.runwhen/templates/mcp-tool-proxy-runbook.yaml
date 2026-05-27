@@ -21,7 +21,7 @@ spec:
       value: '{{match_resource.spec.input_schema | tojson}}'
   secretsProvided:
     - name: mcp_auth
-      workspaceKey: {{match_resource.spec.secret_ref}}
+      workspaceKey: k8s:file@secret/{{match_resource.spec.secret_ref}}:token
   # Dynamic per-invocation. Rendered from the MCP tool's input_schema.properties.
   # RuntimeVarEntry shape: name/default/description/validation
   # (corestate-operator api/v1/common_types.go). Validation.type is constrained

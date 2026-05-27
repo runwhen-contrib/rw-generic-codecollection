@@ -17,7 +17,7 @@ Suite Setup      Suite Initialization
 
 
 *** Tasks ***
-Invoke MCP Tool
+${MCP_TOOL_NAME}
     [Documentation]    Calls the configured MCP tool with merged runtime arguments
     ...                and writes the tool's text response to the task report.
     [Tags]    mcp    proxy    generic
