@@ -15,6 +15,8 @@ spec:
   configProvided:
     - name: MCP_SERVER_URL
       value: {{match_resource.spec.server_url}}
+    - name: MCP_SERVER_DISPLAY_NAME
+      value: {{match_resource.spec.server_display_name}}
     - name: MCP_TOOL_NAME
       value: {{match_resource.spec.tool_name}}
     - name: MCP_INPUT_SCHEMA

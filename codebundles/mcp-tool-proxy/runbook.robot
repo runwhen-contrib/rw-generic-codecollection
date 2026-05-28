@@ -17,7 +17,7 @@ Suite Setup      Suite Initialization
 
 
 *** Tasks ***
-${MCP_TOOL_NAME}
+${MCP_SERVER_DISPLAY_NAME}_${MCP_TOOL_NAME}
     [Documentation]    Calls the configured MCP tool with merged runtime arguments
     ...                and writes the tool's text response to the task report.
     [Tags]    mcp    proxy    generic
@@ -39,6 +39,8 @@ ${MCP_TOOL_NAME}
 Suite Initialization
     ${MCP_SERVER_URL}=    RW.Core.Import User Variable    MCP_SERVER_URL
     ...    type=string    description=Full URL of the MCP server endpoint
+    ${MCP_SERVER_DISPLAY_NAME}=    RW.Core.Import User Variable    MCP_SERVER_DISPLAY_NAME
+    ...    type=string    description=Display name of the MCP server (used in task title)
     ${MCP_TOOL_NAME}=     RW.Core.Import User Variable    MCP_TOOL_NAME
     ...    type=string    description=Name of the MCP tool this SLX proxies
     ${schema_json}=       RW.Core.Import User Variable    MCP_INPUT_SCHEMA
@@ -67,6 +69,7 @@ Suite Initialization
     ${mcp_auth_value}=    Set Variable    ${mcp_auth.value}
 
     Set Suite Variable    ${MCP_SERVER_URL}
+    Set Suite Variable    ${MCP_SERVER_DISPLAY_NAME}
     Set Suite Variable    ${MCP_TOOL_NAME}
     Set Suite Variable    ${MCP_VERIFY_TLS}
     Set Suite Variable    ${schema_json}
