@@ -25,4 +25,4 @@ spec:
     - name: mcp_tool
       value: "{{match_resource.spec.tool_name}}"
     - name: access
-      value: read-only
+      value: "{{ match_resource.spec.access | default('read-write') }}"
