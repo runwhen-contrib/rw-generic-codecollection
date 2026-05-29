@@ -33,9 +33,15 @@ spec:
   # permissive `.*` regex so every var carries a validation block.
   runtimeVarsProvided:
     {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
+    {%- set raw_default = pschema.default | default("") %}
+    {%- if raw_default is none %}{%- set raw_default = "" %}{%- endif %}
+    {# Robot Framework runtime vars are always strings. Cast non-string defaults
+       (numbers, bools, lists, dicts) via tojson first so they survive YAML
+       parsing as strings instead of being interpreted as their native type. #}
+    {%- if raw_default is not string %}{%- set raw_default = raw_default | tojson %}{%- endif %}
     - name: {{pname}}
       description: {{ pschema.description | default("") | tojson }}
-      default: {{ pschema.default | default("") | tojson }}
+      default: {{ raw_default | tojson }}
       validation:
         {% if pschema.enum is defined %}
         type: enum
