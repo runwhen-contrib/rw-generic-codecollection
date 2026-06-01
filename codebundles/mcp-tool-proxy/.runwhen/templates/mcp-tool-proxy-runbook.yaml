@@ -31,6 +31,11 @@ spec:
   # (corestate-operator api/v1/common_types.go). Validation.type is constrained
   # to "enum" or "regex" — when the MCP property has neither, we emit a
   # permissive `.*` regex so every var carries a validation block.
+  {# Required parameters are listed at the schema's top level (JSON Schema
+     convention), not as per-property flags. Surface them by appending a
+     "(required)" hint to each parameter's description so the runtime UI/agent
+     knows which vars are mandatory. #}
+  {%- set required_params = match_resource.spec.input_schema.required | default([]) %}
   runtimeVarsProvided:
     {% for pname, pschema in (match_resource.spec.input_schema.properties | default({})).items() %}
     {%- set raw_default = pschema.default | default("") %}
@@ -39,8 +44,13 @@ spec:
        (numbers, bools, lists, dicts) via tojson first so they survive YAML
        parsing as strings instead of being interpreted as their native type. #}
     {%- if raw_default is not string %}{%- set raw_default = raw_default | tojson %}{%- endif %}
+    {%- set raw_desc = pschema.description | default("") %}
+    {%- if pname in required_params %}
+    {%- if raw_desc %}{%- set raw_desc = raw_desc ~ " (required)" %}
+    {%- else %}{%- set raw_desc = "Required parameter." %}{%- endif %}
+    {%- endif %}
     - name: {{pname}}
-      description: {{ pschema.description | default("") | tojson }}
+      description: {{ raw_desc | tojson }}
       default: {{ raw_default | tojson }}
       validation:
         {% if pschema.enum is defined %}
