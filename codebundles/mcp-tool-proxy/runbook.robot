@@ -50,9 +50,13 @@ Suite Initialization
     ${mcp_auth}=          RW.Core.Import Secret           mcp_auth
     ...    description=Bearer token for the MCP server
 
-    ${schema}=    Evaluate    json.loads('''${schema_json}''') if '''${schema_json}''' else {}
-    ...    modules=json
-    ${properties}=    Evaluate    ${schema}.get('properties', {})
+    # Use Robot's `$var` syntax inside Evaluate (not `${var}`) so the value
+    # is passed as a Python object instead of being interpolated as source.
+    # With `'''${schema_json}'''`, any `\"` inside the JSON (e.g. an MCP tool
+    # description containing quoted text) gets re-interpreted by Python's
+    # string-literal parser and the resulting json.loads input is corrupted.
+    ${schema}=    Evaluate    json.loads($schema_json) if $schema_json else {}    modules=json
+    ${properties}=    Evaluate    $schema.get('properties', {})
 
     # Dynamic per-parameter import. Names come from the MCP tool's input schema;
     # values are populated by papi from agentfarm's runtime_var_values payload
@@ -62,10 +66,11 @@ Suite Initialization
     FOR    ${pname}    IN    @{param_names}
         ${val}=    RW.Core.Import User Variable    ${pname}
         ...        type=string    description=MCP tool input parameter    default=${EMPTY}
-        Run Keyword If    '''${val}''' != '${EMPTY}'
-        ...    Set To Dictionary    ${tool_args}    ${pname}    ${val}
+        IF    $val != ''
+            Set To Dictionary    ${tool_args}    ${pname}    ${val}
+        END
     END
-    ${tool_args_json}=    Evaluate    json.dumps(${tool_args})    modules=json
+    ${tool_args_json}=    Evaluate    json.dumps($tool_args)    modules=json
     ${mcp_auth_value}=    Set Variable    ${mcp_auth.value}
 
     Set Suite Variable    ${MCP_SERVER_URL}
