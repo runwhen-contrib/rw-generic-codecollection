@@ -30,7 +30,7 @@ ${TASK_TITLE}
 
     ${command}=    Run Keyword If    '${INTERPRETER}' == 'python'
     ...    Catenate    SEPARATOR=\n
-    ...    python << 'EOF'
+    ...    python << 'RW_GENERIC_EOF'
     ...    ${decode_op.stdout}
     ...    import json, os
     ...    resp = main()
@@ -38,16 +38,16 @@ ${TASK_TITLE}
     ...    f = open(path, "w", encoding="utf-8")
     ...    json.dump(resp, f)
     ...    f.close()
-    ...    EOF
+    ...    RW_GENERIC_EOF
     ...    ELSE
     ...    Catenate    SEPARATOR=\n
-    ...    bash << 'EOF'
+    ...    bash << 'RW_GENERIC_EOF'
     ...    ${decode_op.stdout}
     ...    ISSUES_FILE="$CODEBUNDLE_TEMP_DIR/run_output.json"
     ...    exec 3> "$ISSUES_FILE"
     ...    main
     ...    exec 3>&-
-    ...    EOF
+    ...    RW_GENERIC_EOF
     
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${command}
@@ -58,22 +58,37 @@ ${TASK_TITLE}
     ${history}=    RW.CLI.Pop Shell History
     
     ${run_output_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/run_output.json
-    ${run_output}=    Evaluate    json.load(open(r'''${run_output_file}''')) if os.path.exists(r'''${run_output_file}''') and os.path.getsize(r'''${run_output_file}''') > 0 else []    modules=json,os
+    TRY
+        ${run_output}=    Evaluate    json.load(open(r'''${run_output_file}''')) if os.path.exists(r'''${run_output_file}''') and os.path.getsize(r'''${run_output_file}''') > 0 else []    modules=json,os
+    EXCEPT    AS    ${output_err}
+        RW.Core.Add Pre To Report    WARNING: script output was not valid JSON and was ignored: ${output_err}
+        ${run_output}=    Create List
+    END
 
     IF    $RUN_TYPE == 'sli'
         ${msg}=    Catenate    SEPARATOR=\n    Command stdout: ${rsp.stdout}    Reported Metric: ${run_output}
         RW.Core.Add Pre To Report    ${msg}
     ELSE
         RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        FOR    ${issue}    IN    @{run_output}
+        # Tolerate a single issue dict, or a None/other return, by coercing to a list.
+        ${issues}=    Evaluate    $run_output if isinstance($run_output, list) else ([$run_output] if isinstance($run_output, dict) else [])
+        IF    $run_output is not None and not isinstance($run_output, (list, dict))
+            RW.Core.Add Pre To Report    WARNING: script output was not a list of issues (got ${run_output}); no issues recorded.
+        END
+        FOR    ${issue}    IN    @{issues}
+            ${issue_title}=    Evaluate    $issue.get('issue title') if isinstance($issue, dict) else None
+            IF    $issue_title is None
+                RW.Core.Add Pre To Report    WARNING: skipped a malformed issue (not a dict or missing 'issue title'): ${issue}
+                CONTINUE
+            END
             RW.Core.Add Issue
-            ...    title=${issue['issue title']}
-            ...    severity=${issue['issue severity']}
+            ...    title=${issue_title}
+            ...    severity=${issue.get('issue severity', 4)}
             ...    expected=The script should produce no issues, indicating no errors were found.
             ...    actual=Found issues output produced by the provided script, indicating errors were found.
             ...    reproduce_hint=look at the SLX description for more details.
-            ...    next_steps=${issue['issue next steps']}
-            ...    details=${issue['issue description']}
+            ...    next_steps=${issue.get('issue next steps', '')}
+            ...    details=${issue.get('issue description', '')}
             ...    observed_at=${issue.get('issue observed at', None)}
         END
     END
@@ -125,7 +140,12 @@ Suite Initialization
     Set To Dictionary    ${raw_env_vars}
     ...    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
     ...    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-    
+    # Warn about runtime var names bash cannot reference (letters/digits/underscore only).
+    ${nonshell_keys}=    Evaluate    [k for k in $raw_env_vars if not __import__('re').match(r'^[A-Za-z_][A-Za-z0-9_]*$', str(k))]
+    IF    $nonshell_keys and '${INTERPRETER}' == 'bash'
+        Log    Runtime var names not usable as bash variables (rename to letters/digits/underscore): ${nonshell_keys}    WARN
+    END
+
     # secrets management
     ${secrets_json}=    RW.Core.Import User Variable    SECRET_ENV_MAP
     ...    type=string
