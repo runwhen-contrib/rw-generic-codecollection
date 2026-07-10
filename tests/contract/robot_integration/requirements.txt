@@ -1,0 +1,6 @@
+# Real RunWhen keyword libraries used by the runner at runtime.
+# RW.CLI comes from rw-cli-keywords (also in the codecollection's requirements.txt);
+# RW.Core / RW.platform come from rw-core-keywords (baked into the rw-base-runtime image).
+robotframework>=4.1.2
+rw-core-keywords
+rw-cli-keywords>=0.0.23

@@ -18,7 +18,7 @@ They do **not** test the script's business logic (it can be anything).
 | Tier | File | Needs | What it is |
 |------|------|-------|------------|
 | Model | `test_tool_builder_contract.py` (+ `harness.py`) | bare `python3` | A harness that mirrors the codebundle's exact steps (real `Evaluate` expressions pulled from the `.robot`, the real `base64 -d`, `subprocess.run(["bash","-c", <heredoc>], env=…)`). Fast, CI-friendly, comprehensive. |
-| Integration | `robot_integration/run_real_robot.py` (+ `RW/` stubs) | `pip install robotframework` | Runs the **real** `tool-builder/{runbook,sli}.robot` under Robot Framework, stubbing only the platform boundary (`RW.Core`/`RW.CLI`/`RW.platform`). The gold-standard check. |
+| Integration | `robot_integration/run_real_robot.py` | the **real** RW libraries | Runs the **real** `tool-builder/{runbook,sli}.robot` under Robot Framework using the **actual** `rw-core-keywords` + `rw-cli-keywords` the runner uses — no stubs. They run standalone: user variables come from env vars, issues → `issues.jsonl`, reports → `report.jsonl`, metrics are logged. The gold-standard check. |
 
 ## Run
 
@@ -26,10 +26,14 @@ They do **not** test the script's business logic (it can be anything).
 # model tier (no deps)
 python3 tests/contract/test_tool_builder_contract.py      # or: pytest tests/contract
 
-# integration tier
-pip install robotframework
+# integration tier (real RunWhen keyword libraries, same as the runner)
+pip install -r tests/contract/robot_integration/requirements.txt
 python3 tests/contract/robot_integration/run_real_robot.py
 ```
+
+The integration runner drives inputs the way the runner does — `GEN_CMD`,
+`INTERPRETER`, `CONFIG_ENV_MAP`, `SECRET_ENV_MAP`, `CODEBUNDLE_TEMP_DIR`, … as
+environment variables — and reads the real `issues.jsonl` / `report.jsonl` back.
 
 ## Scope note
 
