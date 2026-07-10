@@ -28,6 +28,7 @@ Run standalone (no deps):  ``python3 tests/test_runtime_var_escaping.py``
 Or with pytest:            ``pytest tests/test_runtime_var_escaping.py``
 """
 
+import glob
 import json
 import os
 import re
@@ -136,6 +137,34 @@ def test_empty_and_sentinel_values_default_safely():
             assert _robot_evaluate(sec_expr, "secrets_json", sentinel) == [], (
                 f"{rel}: secret sentinel {sentinel!r} should default to []"
             )
+
+
+def test_no_codebundle_json_loads_from_a_nonraw_literal():
+    """Repo-wide guard for the whole bug class: no codebundle may ``json.loads`` a
+    Robot variable that was spliced into a **non-raw** string literal
+    (``'${x}'``, ``"${x}"``, ``'''${x}'''`` ...). Robot substitutes the value into
+    the expression *source*, so Python un-escapes the JSON's ``\\"``/``\\n``/``\\\\``
+    and corrupts it. Use the ``$var`` object form, or a RAW literal (``r'''...'''``).
+
+    ``robot_tests/`` suites are excluded — they intentionally exercise the old form.
+    """
+    offenders = []
+    for path in glob.glob(os.path.join(REPO_ROOT, "codebundles", "**", "*.robot"), recursive=True):
+        if f"{os.sep}robot_tests{os.sep}" in path:
+            continue
+        with open(path, encoding="utf-8") as fh:
+            for lineno, line in enumerate(fh, 1):
+                if "json.load" not in line or "${" not in line:
+                    continue
+                for m in re.finditer(r"json\.loads?\(\s*(r?)('''|\"\"\"|'|\")", line):
+                    is_raw = m.group(1) == "r"
+                    if not is_raw and "${" in line[m.end():]:
+                        offenders.append(f"{os.path.relpath(path, REPO_ROOT)}:{lineno}")
+    assert not offenders, (
+        "json.loads of a variable via a NON-raw literal (RW-GR-67 bug class) found at:\n  "
+        + "\n  ".join(offenders)
+        + "\nUse `$var` object form, e.g. json.loads($var), or a raw literal r'''${var}'''."
+    )
 
 
 if __name__ == "__main__":

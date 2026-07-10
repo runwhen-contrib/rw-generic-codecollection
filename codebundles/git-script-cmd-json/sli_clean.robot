@@ -53,7 +53,7 @@ ${TASK_TITLE}
     # Add additional secrets from JSON (only if JSON is provided)
     TRY
         IF    $ADDITIONAL_SECRETS.value != ""
-            ${additional_env}=    Evaluate    json.loads('''${ADDITIONAL_SECRETS.value}''')    json
+            ${additional_env}=    Evaluate    json.loads($ADDITIONAL_SECRETS.value)    json
             FOR    ${key}    ${value}    IN    &{additional_env}
                 ${env_exports}=    Set Variable    ${env_exports}export ${key}="${value}" && 
             END
