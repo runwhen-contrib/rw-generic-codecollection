@@ -66,7 +66,8 @@ def run(robot_name, script, interpreter="python", run_type="runbook", config="{}
     log_text = open(xml, encoding="utf-8").read() if os.path.exists(xml) else ""
     metrics = re.findall(r"Metric value=([0-9.eE+-]+)", log_text + p.stdout + p.stderr)
     shutil.rmtree(out, ignore_errors=True)
-    return {"rc": p.returncode, "issues": issues, "warnings": warnings, "metrics": metrics}
+    return {"rc": p.returncode, "issues": issues, "warnings": warnings, "metrics": metrics,
+            "log": log_text + p.stdout + p.stderr}
 
 
 def _read_jsonl(path):
@@ -113,19 +114,22 @@ try:
     check("E1", "well-formed issue -> real Add Issue", r["rc"] == 0 and len(r["issues"]) == 1 and _sev(r["issues"][0]) == 2, r)
 
     r = run("runbook", "def main():\n    return None\n")
-    check("D5", "main() returns None -> graceful", r["rc"] == 0 and not r["issues"], r)
+    check("D5", "main() None -> FAILS loudly", r["rc"] != 0 and "did not return a JSON list" in r["log"], r)
 
     r = run("runbook", 'def main():\n    return [{"issue title":"T","issue next steps":"n","issue description":"d"}]\n')
-    check("E3", "missing severity -> default 4", r["rc"] == 0 and len(r["issues"]) == 1 and _sev(r["issues"][0]) == 4, r)
+    check("E3", "missing severity -> default 4 (task passes)", r["rc"] == 0 and len(r["issues"]) == 1 and _sev(r["issues"][0]) == 4, r)
 
     r = run("runbook", 'def main():\n    return [{"issue severity":2,"issue next steps":"n","issue description":"d"}]\n')
-    check("E4", "missing title -> skipped+warned", r["rc"] == 0 and not r["issues"] and any("malformed" in w for w in r["warnings"]), r)
+    check("E4", "missing title -> FAILS loudly", r["rc"] != 0 and "malformed issue" in r["log"], r)
 
     r = run("runbook", f"def main():\n    return {ISSUE}\n")
-    check("E7", "single dict normalized -> 1 issue", r["rc"] == 0 and len(r["issues"]) == 1, r)
+    check("E7", "single dict return -> FAILS loudly", r["rc"] != 0 and "did not return a JSON list" in r["log"], r)
 
     r = run("runbook", 'main() { printf "not json" >&3; }\n', interpreter="bash")
-    check("E8", "non-JSON output -> warned, no crash", r["rc"] == 0 and any("not valid JSON" in w for w in r["warnings"]), r)
+    check("E8", "non-JSON output -> FAILS loudly", r["rc"] != 0 and "could not be read as JSON" in r["log"], r)
+
+    r = run("runbook", f'def main():\n    return [{ISSUE}, {{"issue severity":2}}]\n')
+    check("E4b", "valid issue recorded, then FAILS on malformed one", r["rc"] != 0 and len(r["issues"]) == 1, r)
 
     r = run("runbook", 'main() {\n  printf \'[%s]\' \'' + ISSUE + '\' >&3\n}\nEOF\n', interpreter="bash")
     check("D6", "bare EOF line no longer breaks", r["rc"] == 0 and len(r["issues"]) == 1, r)

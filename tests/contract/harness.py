@@ -182,37 +182,43 @@ def run_case(interpreter, config_env_serialized, script_src, mode="runbook",
         try:
             output = _robot_eval(load_expr, run_output_file=out_file, metric_file=out_file)
         except Exception as e:  # noqa: BLE001 - mirror EXCEPT AS ${output_err}
-            r["warnings"].append(f"output not valid JSON, ignored: {type(e).__name__}")
-            output = [] if mode == "runbook" else 0
+            if mode == "sli":
+                r["warnings"].append(f"metric output not valid JSON; defaulting to 0: {type(e).__name__}")
+                output = 0
+            else:
+                # runbook: fundamental malformation -> the task FAILS loudly (visible run status)
+                r.update(stage="fail:output-not-json", ok=False, failed=True,
+                         error=f"Task script output could not be read as JSON: {type(e).__name__}: {e}")
+                return r
         r["output_type"] = type(output).__name__
 
-        # STEP 6 — ingest (hardened)
+        # STEP 6 — ingest
         if mode == "runbook":
-            # normalize: list stays; dict -> [dict]; None/other -> [] (+warn for scalars)
-            if isinstance(output, list):
-                items = output
-            elif isinstance(output, dict):
-                items = [output]
-            else:
-                items = []
-                if output is not None:
-                    r["warnings"].append(f"output not a list of issues (got {type(output).__name__}); ignored")
-            issues = []
-            for issue in items:
+            if not isinstance(output, list):
+                r.update(stage="fail:not-a-list", ok=False, failed=True,
+                         error=f"Task script did not return a JSON list of issues (got a {type(output).__name__})")
+                return r
+            issues, malformed = [], []
+            for issue in output:
                 title = issue.get("issue title") if isinstance(issue, dict) else None
                 if title is None:
-                    r["warnings"].append("skipped a malformed issue (not a dict or missing 'issue title')")
+                    malformed.append(issue)   # collect; fail after adding the valid ones
                     continue
                 issues.append({
                     "title": title,
-                    "severity": issue.get("issue severity", 4),
+                    "severity": issue.get("issue severity", 4),   # minor fixup, silent
                     "next_steps": issue.get("issue next steps", ""),
                     "details": issue.get("issue description", ""),
                     "observed_at": issue.get("issue observed at", None),
                 })
-            r["issues"] = issues
+            r["issues"] = issues            # valid issues are recorded even if we fail below
+            if malformed:
+                r.update(stage="fail:malformed-issue", ok=False, failed=True,
+                         error=f"Task script produced {len(malformed)} malformed issue(s) "
+                               f"(each must be a JSON object with an 'issue title')")
+                return r
         else:
-            # coerce to a number; non-numeric metric -> 0
+            # sli: coerce to a number; non-numeric metric -> 0 (health drops)
             try:
                 metric = float(output) if not isinstance(output, bool) else 0
             except (TypeError, ValueError):

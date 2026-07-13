@@ -57,28 +57,39 @@ ${TASK_TITLE}
 
     ${history}=    RW.CLI.Pop Shell History
     
+    # Surface the script's stdout/stderr in the report up front, so it is visible
+    # whether the task passes OR fails below.
+    RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
+    RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
+
     ${run_output_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/run_output.json
     TRY
         ${run_output}=    Evaluate    json.load(open(r'''${run_output_file}''')) if os.path.exists(r'''${run_output_file}''') and os.path.getsize(r'''${run_output_file}''') > 0 else []    modules=json,os
     EXCEPT    AS    ${output_err}
-        RW.Core.Add Pre To Report    WARNING: script output was not valid JSON and was ignored: ${output_err}
-        ${run_output}=    Create List
+        IF    $RUN_TYPE == 'sli'
+            Log    Script metric output was not valid JSON; defaulting to 0: ${output_err}    WARN
+            ${run_output}=    Set Variable    ${0}
+        ELSE
+            # Fundamental malformation — fail LOUDLY (visible run status) with an actionable message.
+            Fail    Task script output could not be read as JSON. The script must write a JSON list of issue objects (use [] for no issues). Parser error: ${output_err}
+        END
     END
 
     IF    $RUN_TYPE == 'sli'
-        ${msg}=    Catenate    SEPARATOR=\n    Command stdout: ${rsp.stdout}    Reported Metric: ${run_output}
-        RW.Core.Add Pre To Report    ${msg}
+        RW.Core.Add Pre To Report    Reported Metric: ${run_output}
     ELSE
-        RW.Core.Add Pre To Report    Command stdout: ${rsp.stdout}
-        # Tolerate a single issue dict, or a None/other return, by coercing to a list.
-        ${issues}=    Evaluate    $run_output if isinstance($run_output, list) else ([$run_output] if isinstance($run_output, dict) else [])
-        IF    $run_output is not None and not isinstance($run_output, (list, dict))
-            RW.Core.Add Pre To Report    WARNING: script output was not a list of issues (got ${run_output}); no issues recorded.
+        # Contract: the script returns a JSON LIST of issue objects (use [] for no issues).
+        IF    not isinstance($run_output, list)
+            ${out_type}=    Evaluate    type($run_output).__name__
+            Fail    Task script did not return a JSON list of issues (got a ${out_type}). Return a list of issue objects; use [] for no issues.
         END
-        FOR    ${issue}    IN    @{issues}
+        # Add the valid issues; collect any malformed ones and fail at the end (so the
+        # good findings are still recorded, but the author is told what to fix).
+        ${malformed}=    Create List
+        FOR    ${issue}    IN    @{run_output}
             ${issue_title}=    Evaluate    $issue.get('issue title') if isinstance($issue, dict) else None
             IF    $issue_title is None
-                RW.Core.Add Pre To Report    WARNING: skipped a malformed issue (not a dict or missing 'issue title'): ${issue}
+                Append To List    ${malformed}    ${issue}
                 CONTINUE
             END
             RW.Core.Add Issue
@@ -91,9 +102,11 @@ ${TASK_TITLE}
             ...    details=${issue.get('issue description', '')}
             ...    observed_at=${issue.get('issue observed at', None)}
         END
+        ${malformed_count}=    Get Length    ${malformed}
+        IF    ${malformed_count} > 0
+            Fail    Task script produced ${malformed_count} malformed issue(s); each issue must be a JSON object with at least an 'issue title'. First offending item: ${malformed}[0]
+        END
     END
-
-    RW.Core.Add Pre To Report    Command stderr: ${rsp.stderr}
 
 
 *** Keywords ***

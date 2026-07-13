@@ -76,34 +76,43 @@ def test_wellformed_issues_are_ingested():
     assert r["ok"] and len(r["issues"]) == 2
 
 
-def test_python_main_returns_none_is_graceful():
+# --- FUNDAMENTAL malformations FAIL loudly (visible run status), with a clear message ---
+def test_python_main_returns_none_fails_loudly():
     r = run_case("python", json.dumps({}), "def main():\n    return None\n", mode="runbook")
-    assert r["ok"] and r["issues"] == []
+    assert r.get("failed") and "did not return a JSON list" in r["error"]
 
 
-def test_issue_missing_severity_defaults():
+def test_single_dict_return_fails_loudly():
+    script = f"def main():\n    return {_issue(**{'issue title': 'solo'})!r}\n"
+    r = run_case("python", json.dumps({}), script, mode="runbook")
+    assert r.get("failed") and "did not return a JSON list" in r["error"]
+
+
+def test_non_json_output_fails_loudly():
+    r = run_case("bash", json.dumps({}), 'main() { printf "this is not json" >&3; }\n', mode="runbook")
+    assert r.get("failed") and "could not be read as JSON" in r["error"]
+
+
+def test_issue_missing_title_fails_loudly():
+    script = "def main():\n    return [{'issue severity':2,'issue next steps':'n','issue description':'d'}]\n"
+    r = run_case("python", json.dumps({}), script, mode="runbook")
+    assert r.get("failed") and "malformed issue" in r["error"] and r["issues"] == []
+
+
+def test_valid_issues_recorded_before_failing_on_a_malformed_one():
+    """Good findings are still recorded; the task then fails so the author is told."""
+    good = _issue(**{"issue title": "keeper"})
+    bad = {"issue severity": 2}  # no title
+    script = f"def main():\n    return [{good!r}, {bad!r}]\n"
+    r = run_case("python", json.dumps({}), script, mode="runbook")
+    assert r.get("failed") and len(r["issues"]) == 1 and r["issues"][0]["title"] == "keeper"
+
+
+# --- MINOR fixups stay silent (task passes) ---
+def test_issue_missing_severity_defaults_silently():
     script = "def main():\n    return [{'issue title':'T','issue next steps':'n','issue description':'d'}]\n"
     r = run_case("python", json.dumps({}), script, mode="runbook")
     assert r["ok"] and len(r["issues"]) == 1 and r["issues"][0]["severity"] == 4
-
-
-def test_issue_missing_title_is_skipped_with_warning():
-    script = "def main():\n    return [{'issue severity':2,'issue next steps':'n','issue description':'d'}]\n"
-    r = run_case("python", json.dumps({}), script, mode="runbook")
-    assert r["ok"] and r["issues"] == []
-    assert any("malformed issue" in w for w in r["warnings"])
-
-
-def test_single_issue_dict_is_normalized_to_a_list():
-    script = f"def main():\n    return {_issue(**{'issue title': 'solo'})!r}\n"
-    r = run_case("python", json.dumps({}), script, mode="runbook")
-    assert r["ok"] and len(r["issues"]) == 1 and r["issues"][0]["title"] == "solo"
-
-
-def test_non_json_output_is_warned_not_crashed():
-    r = run_case("bash", json.dumps({}), 'main() { printf "this is not json" >&3; }\n', mode="runbook")
-    assert r["ok"] and r["issues"] == []
-    assert any("not valid JSON" in w for w in r["warnings"])
 
 
 def test_bare_eof_line_in_script_does_not_break_heredoc():
