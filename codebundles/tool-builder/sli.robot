@@ -30,7 +30,7 @@ ${TASK_TITLE}
 
     ${command}=    Run Keyword If    '${INTERPRETER}' == 'python'
     ...    Catenate    SEPARATOR=\n
-    ...    python << 'EOF'
+    ...    python << 'RW_GENERIC_EOF'
     ...    ${decode_op.stdout}
     ...    import json, os
     ...    resp = main()
@@ -38,16 +38,16 @@ ${TASK_TITLE}
     ...    f = open(path, "w", encoding="utf-8")
     ...    json.dump(resp, f)
     ...    f.close()
-    ...    EOF
+    ...    RW_GENERIC_EOF
     ...    ELSE
     ...    Catenate    SEPARATOR=\n
-    ...    bash << 'EOF'
+    ...    bash << 'RW_GENERIC_EOF'
     ...    ${decode_op.stdout}
     ...    METRIC_FILE="$CODEBUNDLE_TEMP_DIR/metric_data.json"
     ...    exec 3> "$METRIC_FILE"
     ...    main
     ...    exec 3>&-
-    ...    EOF
+    ...    RW_GENERIC_EOF
     
     ${rsp}=    RW.CLI.Run Cli
     ...    cmd=${command}
@@ -56,8 +56,20 @@ ${TASK_TITLE}
     ...    timeout_seconds=${TIMEOUT_SECONDS}
     
     ${metric_file}=    Set Variable    ${raw_env_vars["CODEBUNDLE_TEMP_DIR"]}/metric_data.json
-    ${metric}=    Evaluate    json.load(open(r'''${metric_file}''')) if os.path.exists(r'''${metric_file}''') and os.path.getsize(r'''${metric_file}''') > 0 else 0    modules=json,os
-    
+    TRY
+        ${metric_raw}=    Evaluate    json.load(open(r'''${metric_file}''')) if os.path.exists(r'''${metric_file}''') and os.path.getsize(r'''${metric_file}''') > 0 else 0    modules=json,os
+    EXCEPT    AS    ${metric_err}
+        Log    Script metric output was not valid JSON; defaulting to 0: ${metric_err}    WARN
+        ${metric_raw}=    Set Variable    ${0}
+    END
+    # Coerce to a number; a non-numeric metric (dict/list/non-numeric string) -> 0.
+    TRY
+        ${metric}=    Evaluate    float($metric_raw) if not isinstance($metric_raw, bool) else 0
+    EXCEPT    AS    ${coerce_err}
+        Log    Script metric was not numeric and was set to 0: ${coerce_err}    WARN
+        ${metric}=    Set Variable    ${0}
+    END
+
     RW.Core.Push Metric    ${metric}    sub_name=metric
     RW.Core.Push Metric    ${metric}
 
@@ -89,7 +101,7 @@ Suite Initialization
     ...    type=string
     ...    description="JSON string of environment variables to values"
     ...    example="{"env_name": "env_value"}"
-    ${raw_env_vars}=    Evaluate    json.loads('${env_vars_json}' if '${env_vars_json}' not in ['null', '', 'None'] else '{}')    modules=json
+    ${raw_env_vars}=    Evaluate    json.loads($env_vars_json) if $env_vars_json not in [None, 'null', '', 'None'] else {}    modules=json
     ${OS_PATH}=    Get Environment Variable    PATH
     Run Keyword If    'PATH' in ${raw_env_vars}
     ...    Set To Dictionary
@@ -102,13 +114,18 @@ Suite Initialization
     Set To Dictionary    ${raw_env_vars}
     ...    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
     ...    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-    
+    # Warn about runtime var names bash cannot reference (letters/digits/underscore only).
+    ${nonshell_keys}=    Evaluate    [k for k in $raw_env_vars if not __import__('re').match(r'^[A-Za-z_][A-Za-z0-9_]*$', str(k))]
+    IF    $nonshell_keys and '${INTERPRETER}' == 'bash'
+        Log    Runtime var names not usable as bash variables (rename to letters/digits/underscore): ${nonshell_keys}    WARN
+    END
+
     # secrets management
     ${secrets_json}=    RW.Core.Import User Variable    SECRET_ENV_MAP
     ...    type=string
     ...    description="JSON string of environment variables to secrets"
     ...    example="['env_name']"
-    ${raw_secrets}=     Evaluate    json.loads('${secrets_json}' if '${secrets_json}' not in ['null', '', 'None'] else '[]')    modules=json
+    ${raw_secrets}=     Evaluate    json.loads($secrets_json) if $secrets_json not in [None, 'null', '', 'None'] else []    modules=json
 
     ${secret_objs}=    Create Dictionary
     FOR    ${env_name}    IN    @{raw_secrets}
