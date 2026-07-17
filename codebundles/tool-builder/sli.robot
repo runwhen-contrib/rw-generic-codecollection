@@ -90,6 +90,7 @@ Suite Initialization
     ...    description=A useful task title. This is useful for helping find this generic task with RunWhen Assistants. 
     ...    pattern=\w*
     ...    example="Run a bash command"
+    ...    default=''
     ${TIMEOUT_SECONDS}=    RW.Core.Import User Variable    TIMEOUT_SECONDS
     ...    type=string
     ...    description=The amount of seconds before the command is killed. 
