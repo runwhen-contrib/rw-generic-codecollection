@@ -1,0 +1,22 @@
+apiVersion: runwhen.com/v1
+kind: GenerationRules
+spec:
+  platform: mcp
+  generationRules:
+    - resourceTypes:
+        - mcp:mcp_tool
+      matchRules:
+        - type: pattern
+          pattern: ".+"
+          properties: [tool_name]
+          mode: substring
+      slxs:
+        - baseName: mcp-tool
+          levelOfDetail: basic
+          qualifiers: [server_display_name, tool_name]
+          baseTemplateName: mcp-tool-proxy
+          outputItems:
+            - type: slx
+              templateName: mcp-tool-proxy-slx.yaml
+            - type: runbook
+              templateName: mcp-tool-proxy-runbook.yaml
